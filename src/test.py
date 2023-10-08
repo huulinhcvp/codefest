@@ -1,5 +1,4 @@
 import numpy as np
-from const import Spoil
 
 map_matrix = [
     [

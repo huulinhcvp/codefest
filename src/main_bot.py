@@ -1,19 +1,14 @@
-import time
 import copy
 import socketio
 import numpy as np
-from operator import itemgetter
-from game_info import GameInfo
+from src.sbot1.game_info import GameInfo
 from collections import deque
-from const import (
+from src.sbot1.const import (
     NextMove,
     Spoil,
     ValidPos,
     InvalidPos,
-    TargetPos,
-    spoil_set,
     valid_pos_set,
-    invalid_pos_set,
     target_pos_set,
     bombs_threshold
 )
