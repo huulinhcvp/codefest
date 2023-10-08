@@ -29,6 +29,7 @@ saved_routes = dict()
 previous_pos = None
 previous_timestamp = 0
 # make_decision = (None, None)
+max_time = 0
 last_directions = ''
 
 my_power = 1
@@ -300,12 +301,25 @@ class GameMap:
 
                 self.map_matrix[danger_row][danger_col] = InvalidPos.TEMP.value
 
+    def _retrieve_all_targets(self):
+        roads = list(zip(*np.where(self.map_matrix == 0)))
+        return roads
+
+    def _update_targets(self):
+        roads = self._retrieve_all_targets()
+        for pos in roads:
+            num_balks = self.num_balk(pos)
+            if num_balks >= 2:
+                self.targets[pos] = 0
+
     def fill_map(self):
         """Fill all map matrix"""
         self._fill_spoils(self.map_info['spoils'])
         self._fill_bombs(self.map_info['bombs'])
         self._fill_bomb_danger_zones()
         self._fill_opp_danger_zones()
+        self._update_targets()
+        # print(f'All targets: {self.targets}')
 
     def avail_moves(self, cur_pos):
         """All available moves with current position."""
@@ -341,15 +355,18 @@ class GameMap:
                 break
             elif delta_col == 0:
                 tmp = min(self.my_bot.power, 4)
-                if delta_row > tmp + 2:
+                if delta_row > tmp + 3:
                     answer_route = (r, p, score)
                     break
-                    # answer_routes.append((r, p, score))
+                elif delta_row > tmp:
+                    answer_routes.append((r, p, score))
             elif delta_row == 0:
                 tmp = min(self.my_bot.power, 4)
-                if delta_col > tmp + 2:
+                if delta_col > tmp + 3:
                     answer_route = (r, p, score)
                     break
+                elif delta_col > tmp:
+                    answer_routes.append((r, p, score))
                     # answer_routes.append((r, p, score))
 
             avail_moves = self.avail_moves(pos)
@@ -496,7 +513,7 @@ def finding_path(game_map):
             p = copy.deepcopy(poses)
             p.extend(next_poses)
             normal_routes.put((score - bombs_power, (score - bombs_power, r, p, 13)))
-            if bombs_power >= 2:
+            if bombs_power >= 3:
                 break
 
         # Check whether the current position is the target or not.
@@ -612,7 +629,7 @@ def map_state(data):
     if not previous_pos:
         drive_bot(game_map)
     else:
-        if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) > 128:
+        if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) > 256:
             previous_timestamp = game_map.timestamp
             drive_bot(game_map)
     # update latest power of bots
@@ -630,24 +647,25 @@ def drive_bot(game_map):
     global bomb_timestamp
     game_map.fill_map()
     # print(f'Driving bot: {game_map.id}')
-    greedy_routes = greedy_bfs(game_map)
-    if greedy_routes:
-        priority_route = greedy_routes[1]
+    # greedy_routes = greedy_bfs(game_map)
+    # if greedy_routes:
+    #     priority_route = greedy_routes[1]
+    #     my_route = priority_route[1]
+    #     normal_queue.append(
+    #         (-1 * game_map.id, (''.join(my_route), game_map.my_bot.pos, priority_route[2], priority_route[3])))
+    # else:
+    normal_routes = finding_path(game_map)
+
+    # print(f'Normal routes is EMPTY: {normal_routes.empty()}')
+    if not normal_routes.empty():
+        priority_route = normal_routes.get()[1]
         my_route = priority_route[1]
         normal_queue.append(
             (-1 * game_map.id, (''.join(my_route), game_map.my_bot.pos, priority_route[2], priority_route[3])))
-    else:
-        normal_routes = finding_path(game_map)
-        # print(f'Normal routes is EMPTY: {normal_routes.empty()}')
-        if not normal_routes.empty():
-            priority_route = normal_routes.get()[1]
-            my_route = priority_route[1]
-            normal_queue.append(
-                (-1 * game_map.id, (''.join(my_route), game_map.my_bot.pos, priority_route[2], priority_route[3])))
 
 
 def main():
-    sio.connect('http://18.142.250.216:80', transports=['websocket'])
+    sio.connect('http://localhost:80', transports=['websocket'])
     sio.wait()
 
 
