@@ -1,6 +1,6 @@
 {
-   "id":2,
-   "timestamp":1696302611219,
+   "id":1,
+   "timestamp":1696768506279,
    "map_info":{
       "size":{
          "cols":26,
@@ -463,21 +463,25 @@
          ]
       ],
       "bombs":[
-
+         
       ],
       "spoils":[
-
+         
       ],
       "gameStatus":"None",
-      "viruses":[
-
-      ],
-      "human":[
-
-      ],
-      "virusSpeed":0,
-      "humanSpeed":0
+      "dragonEggGSTArray":[
+         {
+            "row":2,
+            "col":2,
+            "id":"player1-xxx"
+         },
+         {
+            "row":11,
+            "col":23,
+            "id":"player2-xxx"
+         }
+      ]
    },
-   "tag":"update-data",
+   "tag":"start-game",
    "gameRemainTime":0
 }

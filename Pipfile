@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 python-socketio = "*"
 numpy = "*"
-asyncio = "*"
+socketio = "*"
 aiohttp = "*"
 websocket-client = "*"
 

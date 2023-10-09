@@ -1,3 +1,5 @@
+import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import numpy as np
 
 map_matrix = [
@@ -401,14 +403,27 @@ np_matrix[2][3] = 9
 
 cnt = np.count_nonzero(np_matrix == 2)
 
-print(cnt)
-# egg_gst = tuple(zip(*np.where(np_matrix == 5)))
-#
-# attack_directions = np.array([[-1, 0], [0, -1], [0, 1], [1, 0]])
-#
-# new_attack_directions = 2 * attack_directions
-#
-# for direction in new_attack_directions:
-#     print(direction)
-#     print(type(direction))
-# print(attack_directions)
+
+def task1(y):
+    my_list = [i for i in range(1000000)]
+    return y in my_list
+
+
+def task2(x):
+    my_list = [i for i in range(1000000)]
+    return x not in my_list
+
+
+def processing():
+
+    with ProcessPoolExecutor(2) as executor:
+        job1 = executor.submit(task1, 999999)
+        job2 = executor.submit(task2, 1)
+        job_list = [job1, job2]
+
+        for res in as_completed(job_list):
+            print(res.result())
+
+
+if __name__ == "__main__":
+    processing()
