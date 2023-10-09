@@ -246,8 +246,8 @@ class GameMap:
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
                     # Please do not place bombs to explode in the vicinity of your eggs.
-                    self.map_matrix[row][col] = InvalidPos.TEMP.value  # 5
-        self.map_matrix[opp_egg_pos[0]][opp_egg_pos[1]] = 2  # need to attack
+                    self.map_matrix[row][col] = InvalidPos.EGG_GST.value  # 5
+        self.map_matrix[opp_egg_pos[0]][opp_egg_pos[1]] = ValidPos.BALK.value  # need to attack
 
     def _fill_spoils(self, map_spoils):
         """Fill all spoils into the map matrix."""
@@ -276,14 +276,14 @@ class GameMap:
             self.map_matrix[bomb_pos[0]][bomb_pos[1]] = InvalidPos.BOMB.value
 
             # set power to bombs in map matrix
-            if player_id == GameInfo.PLAYER_ID:
+            if GameInfo.PLAYER_ID in player_id:
                 bomb_power = my_power
 
             else:
                 bomb_power = opp_power
 
             # Finding all bombs about to explode
-            if remain_time <= bombs_threshold:  # default 100ms
+            if remain_time <= bombs_threshold:  # default 2000ms
                 self.bombs_danger[bomb_pos] = {
                     'power': bomb_power,
                     'remain_time': remain_time
@@ -298,37 +298,19 @@ class GameMap:
         for bomb_pos, bomb_info in self.bombs_danger.items():
             power = bomb_info['power']
             for direction in attack_directions:
-                for i in range(1, power + 1):
+                for i in range(1, power + 2):  # increase safe
                     attack = i * direction
                     danger_row = bomb_pos[0] + attack[0]
                     danger_col = bomb_pos[1] + attack[1]
                     # fill with value of WALL
                     if danger_row < 0 or danger_row >= self.max_row or danger_col < 0 or danger_col >= self.max_col:
                         continue
+                    if self.map_matrix[danger_row][danger_col] in invalid_pos_set:
+                        continue
                     self.map_matrix[danger_row][danger_col] = InvalidPos.BOMB.value
 
     def _fill_opp_danger_zones(self):
-        # self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = InvalidPos.TEMP.value
-        # delta_row = self.opp_bot.pos[0] - self.my_bot.pos[0]
-        # delta_col = self.opp_bot.pos[1] - self.my_bot.pos[1]
-
         self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = ValidPos.BALK.value
-
-        # if delta_row == 0:
-        #     if delta_col <= 0:
-        #         for i in range(1, min(abs(delta_col), self.opp_bot.power + 1)):
-        #             self.map_matrix[self.my_bot.pos[0]][self.opp_bot.pos[1] + i] = InvalidPos.TEMP.value
-        #     else:
-        #         for i in range(1, min(delta_col, self.opp_bot.power + 1)):
-        #             self.map_matrix[self.my_bot.pos[0]][self.opp_bot.pos[1] - i] = InvalidPos.TEMP.value
-        # elif delta_col == 0:
-        #     if delta_row <= 0:
-        #         for i in range(1, min(abs(delta_row), self.opp_bot.power + 1)):
-        #             self.map_matrix[self.opp_bot.pos[0] + i][self.my_bot.pos[1]] = InvalidPos.TEMP.value
-        #     else:
-        #         for i in range(1,  min(delta_row, self.opp_bot.power + 1)):
-        #             self.map_matrix[self.opp_bot.pos[0] - i][self.my_bot.pos[1]] = InvalidPos.TEMP.value
-
         power = min(self.opp_bot.power, 4)
         for direction in attack_directions:
             for i in range(1, power + 1):
@@ -338,8 +320,9 @@ class GameMap:
                 # fill with value of WALL
                 if danger_row < 0 or danger_row >= self.max_row or danger_col < 0 or danger_col >= self.max_col:
                     continue
-
-                self.map_matrix[danger_row][danger_col] = InvalidPos.TEMP.value
+                if self.map_matrix[danger_row][danger_col] in invalid_pos_set:
+                    continue
+                self.map_matrix[danger_row][danger_col] = InvalidPos.TEMP.value  # attack opp
 
     def _retrieve_all_targets(self):
         roads = list(zip(*np.where(self.map_matrix == 0)))
@@ -349,7 +332,10 @@ class GameMap:
         roads = self._retrieve_all_targets()
         for pos in roads:
             num_balks = self.num_balk(pos)
-            if num_balks >= 2:
+            delta = self.heuristic_func(pos, self.my_bot.pos)
+
+            # do not approach the target if the path is quite far
+            if num_balks >= 2 and delta <= 7:
                 self.targets[pos] = 0
 
     def _fill_my_danger_zones(self, cur_pos, power):
@@ -363,6 +349,8 @@ class GameMap:
                 if danger_row < 0 or danger_row >= self.max_row or danger_col < 0 or danger_col >= self.max_col:
                     continue
 
+                if self.map_matrix[danger_row][danger_col] in invalid_pos_set:
+                    continue
                 self.map_matrix[danger_row][danger_col] = InvalidPos.TEMP.value
 
     def fill_map(self):
@@ -378,14 +366,10 @@ class GameMap:
     def avail_moves(self, cur_pos):
         """All available moves with current position."""
         res = []
-        # tmp = copy.deepcopy(valid_pos_set)
-        # tmp.add(Spoil.EGG_MYSTIC.value)
         for route, direction in directions.items():
             next_move = (cur_pos[0] + direction[0], cur_pos[1] + direction[1])
             if next_move[0] < 0 or next_move[0] >= self.max_row or next_move[1] < 0 or next_move[1] >= self.max_col:
                 continue
-            # if next_move == self.opp_bot.pos:
-            #     continue
 
             if self.map_matrix[next_move[0]][next_move[1]] in valid_pos_set:
                 res.append((route.value, next_move))
@@ -406,7 +390,7 @@ class GameMap:
         while len(move_queue) > 0:
             pos, routes, poses, score = move_queue.popleft()
             # Move to 4 directions next to current position.
-            delta = abs(pos[0] - cur_pos[0]) + abs(pos[1] - cur_pos[1])
+            delta = self.heuristic_func(pos, cur_pos)
             if self.map_matrix[pos[0]][pos[1]] in valid_pos_set:
                 if self.map_matrix[pos[0]][pos[1]] in target_pos_set or pos in self.targets.keys():
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
@@ -448,16 +432,12 @@ class GameMap:
                 move_queue.append([move[0], r, p, move[1]])
 
         if perfected_routes:
-            # print(f'Perfected routes found!!!')
             return perfected_routes
         elif len(greedy_routes) > 0:
-            # print(f'Greedy routes found!!!')
             return greedy_routes.pop()
         elif safe_routes:
-            # print(f'Safe routes found!!!')
             return safe_routes
         elif len(unsafe_routes) > 0:
-            # print(f'Unsafe routes found!!!')
             return unsafe_routes.pop()
 
         return deque(), deque(), 0
@@ -795,7 +775,7 @@ def map_state(data):
     if not previous_pos:
         drive_bot(game_map)
     else:
-        if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 300:
+        if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 128:
             previous_timestamp = game_map.timestamp
             drive_bot(game_map)
     # update latest power of bots
