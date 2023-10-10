@@ -332,7 +332,7 @@ class GameMap:
         roads = self._retrieve_all_targets()
         for pos in roads:
             num_balks = self.num_balk(pos)
-            delta = self.heuristic_func(pos, self.my_bot.pos)
+            delta = self.heuristic_func(pos, self.my_bot.pos, -1)
 
             # do not approach the target if the path is quite far
             if num_balks >= 2 and delta <= 7:
@@ -390,21 +390,21 @@ class GameMap:
         while len(move_queue) > 0:
             pos, routes, poses, score = move_queue.popleft()
             # Move to 4 directions next to current position.
-            delta = self.heuristic_func(pos, cur_pos)
+            # delta = self.heuristic_func(pos, cur_pos, -1)
             if self.map_matrix[pos[0]][pos[1]] in valid_pos_set:
-                if self.map_matrix[pos[0]][pos[1]] in target_pos_set or pos in self.targets.keys():
+                if pos in self.targets.keys():
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                         perfected_routes = routes, poses, score
                         break
                     else:
-                        if power + 2 < delta < power + 13:
+                        if power + 2 < score < power + 5:
                             greedy_routes.appendleft((routes, poses, score))
                 else:
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                         if not safe_routes:
                             safe_routes = routes, poses, score
                     else:
-                        if power + 2 < delta < power + 13:
+                        if power + 2 < score < power + 5:
                             unsafe_routes.appendleft((routes, poses, score))
 
             next_routes = []  # Save all routes along with related information.
@@ -420,13 +420,19 @@ class GameMap:
                     continue
                 # valid positions
                 if self.map_matrix[next_pos[0]][next_pos[1]] in valid_pos_set:
+                    min_score = 1000000
+                    # Estimate costs from current position (next_pos) to targets.
+                    for spoil_pos, spoil_type in self.targets.items():
+                        est_score = self.heuristic_func(next_pos, spoil_pos, spoil_type)
+                        if est_score < min_score:
+                            min_score = est_score
                     saved.add(next_pos)
-                    next_routes.append([next_pos, score + 1, route.value])
+                    next_routes.append([next_pos, score + 1, score + min_score, route.value])
 
-            # next_routes.sort(key=lambda x: x[2])
+            next_routes.sort(key=lambda x: x[2])
             for move in next_routes:
                 r = copy.deepcopy(routes)
-                r.append(move[2])
+                r.append(move[3])
                 p = copy.deepcopy(poses)
                 p.append(move[0])
                 move_queue.append([move[0], r, p, move[1]])
@@ -528,10 +534,11 @@ class GameMap:
                     return bombs_power, moves, poses
         return 0, [], []
 
-    @staticmethod
-    def heuristic_func(current_pos, target_pos):
+    def heuristic_func(self, current_pos, target_pos, spoil_type=0):
         cost = abs(current_pos[0] - target_pos[0]) + abs(current_pos[1] - target_pos[1])
-        # bombs_power = self.num_balk(current_pos)
+        if spoil_type == 0:
+            bombs_power = self.num_balk(current_pos)
+            cost -= bombs_power
         return cost
 
     @staticmethod
@@ -648,7 +655,7 @@ def greedy_bfs(game_map):
 
 
 def finding_path(game_map):
-    normal_routes = PriorityQueue()
+    normal_routes = None
 
     move_queue = deque()
     # queue element [pos, routes, score]
@@ -660,23 +667,21 @@ def finding_path(game_map):
     meet_spoil = False
     while len(move_queue) > 0:
         pos, routes, poses, score = move_queue.popleft()
-        bombs_power, place_bombs, next_poses = game_map.greedy_place_bombs(pos)
-        if len(place_bombs) >= 3:
-            r = copy.deepcopy(routes)
-            r.extend(place_bombs)
-            p = copy.deepcopy(poses)
-            p.extend(next_poses)
-            normal_routes.put((score - bombs_power, (score - bombs_power, r, p, 13)))
-            if bombs_power >= 2:
-                break
 
         # Check whether the current position is the target or not.
         for spoil_pos, spoil_type in game_map.targets.items():
             if game_map.map_matrix[spoil_pos[0]][spoil_pos[1]] not in valid_pos_set:
                 continue
             if pos == spoil_pos:
+                if spoil_type == 0:
+                    bombs_power, place_bombs, next_poses = game_map.greedy_place_bombs(pos)
+                    if len(place_bombs) >= 3:
+                        routes.extend(place_bombs)
+                        poses.extend(next_poses)
+                        normal_routes = (score, routes, poses, 13)
+                else:
+                    normal_routes = (score, routes, poses, spoil_type)
                 meet_spoil = True
-                normal_routes.put((score, (score, copy.deepcopy(routes), copy.deepcopy(poses), spoil_type)))
                 break
         if meet_spoil:
             break
@@ -691,15 +696,12 @@ def finding_path(game_map):
             # invalid positions
             if next_pos[0] < 0 or next_pos[0] >= game_map.max_row or next_pos[1] < 0 or next_pos[1] >= game_map.max_col:
                 continue
-            if next_pos == game_map.my_bot.pos:
-                continue
-
             # valid positions
             if game_map.map_matrix[next_pos[0]][next_pos[1]] in valid_pos_set:
                 min_score = 1000000
                 # Estimate costs from current position (next_pos) to targets.
-                for spoil_pos in game_map.targets.keys():
-                    est_score = game_map.heuristic_func(next_pos, spoil_pos)
+                for spoil_pos, spoil_type in game_map.targets.items():
+                    est_score = game_map.heuristic_func(next_pos, spoil_pos, spoil_type)
                     if est_score < min_score:
                         min_score = est_score
 
@@ -775,7 +777,7 @@ def map_state(data):
     if not previous_pos:
         drive_bot(game_map)
     else:
-        if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 128:
+        if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 32:
             previous_timestamp = game_map.timestamp
             drive_bot(game_map)
     # update latest power of bots
@@ -794,31 +796,18 @@ def drive_bot(game_map):
     global bomb_timestamp
     global max_time
     game_map.fill_map()
-    # greedy_routes = greedy_bfs(game_map)
-    # if greedy_routes:
-    #     priority_route = greedy_routes[1]
-    #     my_route = priority_route[1]
-    #     normal_queue.append(
-    #         (game_map.id, (''.join(my_route), game_map.my_bot.pos, priority_route[2], priority_route[3])))
-    # else:
     normal_routes = finding_path(game_map)
-    if not normal_routes.empty():
-        priority_route = normal_routes.get()[1]
-        my_route = priority_route[1]
+    if normal_routes:
+        my_route = normal_routes[1]
         normal_queue.append(
-            (game_map.id, (''.join(my_route), game_map.my_bot.pos, priority_route[2], priority_route[3])))
-        if counter > 0:
-            counter = 0
-    else:
-        counter += 1
-        if counter == 64:
-            valid_pos_set.add(Spoil.EGG_MYSTIC.value)  # add egg mystic to valid pos
-            free_route = free_bfs(game_map)
-            if len(free_route) > 0:
-                my_route = free_route[1]
-                normal_queue.append(
-                    (game_map.id, (''.join(my_route), game_map.my_bot.pos, free_route[2], free_route[3])))
-                counter = 0
+            (game_map.id, (''.join(my_route), game_map.my_bot.pos, normal_routes[2], normal_routes[3])))
+    # else:
+    #     valid_pos_set.add(Spoil.EGG_MYSTIC.value)  # add egg mystic to valid pos
+    #     free_route = free_bfs(game_map)
+    #     if len(free_route) > 0:
+    #         my_route = free_route[1]
+    #         normal_queue.append(
+    #             (game_map.id, (''.join(my_route), game_map.my_bot.pos, free_route[2], free_route[3])))
 
 
 def main():
