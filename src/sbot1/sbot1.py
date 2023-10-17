@@ -662,7 +662,7 @@ def map_state(data):
         if not previous_pos or start_pos != previous_pos:
             previous_pos = start_pos
             if next_move[1][3] == 13:
-                bomb_timestamp = game_map.timestamp + 460 * (next_move[1][0].index('b') + 1)
+                bomb_timestamp = game_map.timestamp
             next_moves(next_move[1][0])
     else:
         previous_pos = None
