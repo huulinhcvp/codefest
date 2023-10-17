@@ -214,7 +214,7 @@ class GameMap:
                     break
                 if self.map_matrix[row][col] in tmp:
                     if (row, col) == self.opp_bot.pos:
-                        num_balk += 2
+                        num_balk += 1
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
                     num_balk += 1
@@ -278,7 +278,7 @@ class GameMap:
             player_id = bomb['playerId']
 
             # 13: Bomb
-            self.map_matrix[bomb_pos[0]][bomb_pos[1]] = InvalidPos.BOMB.value
+            # self.map_matrix[bomb_pos[0]][bomb_pos[1]] = InvalidPos.BOMB.value
 
             # set power to bombs in map matrix
             if GameInfo.PLAYER_ID in player_id:
@@ -301,9 +301,9 @@ class GameMap:
     def _fill_bomb_danger_zones(self):
         """Update danger positions to wall."""
         for bomb_pos, bomb_info in self.bombs_danger.items():
-            power = bomb_info['power']
+            # power = bomb_info['power']
             for direction in attack_directions:
-                for i in range(1, power + 2):  # increase safe
+                for i in range(1, 4):  # increase safe
                     attack = i * direction
                     danger_row = bomb_pos[0] + attack[0]
                     danger_col = bomb_pos[1] + attack[1]
@@ -339,18 +339,12 @@ class GameMap:
 
     def _retrieve_all_targets(self):
         roads = list(zip(*np.where(self.map_matrix == 0)))
-        # print(f'{self.id} ** Roads: {roads}')
         return roads
 
     def _update_targets(self):
         roads = self._retrieve_all_targets()
-        # print(f'Roads: {roads}')
         for pos in roads:
             num_balks = self.num_balk(pos)
-            # print(f'With pos {pos}: {num_balks}')
-            # delta = self.heuristic_func(pos, self.my_bot.pos, -1)
-
-            # do not approach the target if the path is quite far
             if num_balks >= 1:
                 self.bomb_targets[pos] = num_balks
 
@@ -499,7 +493,7 @@ class GameMap:
         if spoil_type == 0:
             bombs_power = self.num_balk(current_pos)
             if bombs_power > 1:
-                cost -= bombs_power
+                cost = cost - (bombs_power + 5)
         elif spoil_type != -1:
             cost -= 1
         return cost
@@ -668,7 +662,7 @@ def map_state(data):
         if not previous_pos or start_pos != previous_pos:
             previous_pos = start_pos
             if next_move[1][3] == 13:
-                bomb_timestamp = game_map.timestamp + 230 * (next_move[1][0].index('b') + 1)
+                bomb_timestamp = game_map.timestamp + 460 * (next_move[1][0].index('b') + 1)
             next_moves(next_move[1][0])
     else:
         previous_pos = None
@@ -678,7 +672,7 @@ def map_state(data):
         if not previous_pos:
             drive_bot(game_map)
         else:
-            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 230:
+            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 16:
                 previous_timestamp = game_map.timestamp
                 drive_bot(game_map)
 
@@ -694,35 +688,27 @@ def drive_bot(game_map):
     global bomb_timestamp
     global max_time
     game_map.fill_map()
-    normal_routes = finding_path(game_map)
-    # print(f'{game_map.id} ** Targets: {game_map.targets}')
-    # print(f'{game_map.id} ** Bomb Targets: {game_map.bomb_targets}')
-    # print(f'{game_map.id} ** Map matrix: {game_map.map_matrix}')
-    if normal_routes:
-        my_route = normal_routes[1]
-        # if normal_routes[3] == 13:
-        #     print(f'======== {game_map.id} Place bombs =======')
-        #     print(f'My pos: {game_map.my_bot.pos}')
-        #     print(f"Routes: {''.join(my_route)}")
-        #     print(f'Next poses: {normal_routes[2]}')
-        normal_queue.append(
-            (game_map.id, (''.join(my_route), game_map.my_bot.pos, normal_routes[2], normal_routes[3])))
-        opp_pos = game_map.opp_bot.pos
-        count_opp = 0
-        counter = 0
-    else:
-        if game_map.opp_bot.pos == opp_pos:
-            count_opp += 1
-        counter += 1
-        if count_opp == 16 or counter == 16:
-            valid_pos_set.add(Spoil.EGG_MYSTIC.value)  # add egg mystic to valid pos
-            valid_pos_set.add(InvalidPos.TEMP.value)
-            free_route = free_bfs(game_map)
-            if len(free_route) > 0:
-                print(f'{game_map.id} ** Free routes: {free_route}')
-                my_route = free_route[1]
-                normal_queue.append(
-                    (game_map.id, (''.join(my_route), game_map.my_bot.pos, free_route[2], free_route[3])))
+    if len(game_map.bomb_targets) > 0 or len(game_map.targets) > 0:
+        normal_routes = finding_path(game_map)
+        if normal_routes:
+            my_route = normal_routes[1]
+            normal_queue.append(
+                (game_map.id, (''.join(my_route), game_map.my_bot.pos, normal_routes[2], normal_routes[3])))
+            opp_pos = game_map.opp_bot.pos
+            count_opp = 0
+            counter = 0
+        else:
+            if game_map.opp_bot.pos == opp_pos:
+                count_opp += 1
+            counter += 1
+            if count_opp == 16 or counter == 16:
+                valid_pos_set.add(Spoil.EGG_MYSTIC.value)  # add egg mystic to valid pos
+                valid_pos_set.add(InvalidPos.TEMP.value)
+                free_route = free_bfs(game_map)
+                if len(free_route) > 0:
+                    my_route = free_route[1]
+                    normal_queue.append(
+                        (game_map.id, (''.join(my_route), game_map.my_bot.pos, free_route[2], free_route[3])))
 
 
 def main():
