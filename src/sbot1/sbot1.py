@@ -679,14 +679,12 @@ def map_state(data):
         next_move = normal_queue.pop()
         start_pos = next_move[1][1]
         if not previous_pos or start_pos != previous_pos:
-            previous_pos = start_pos
+            previous_pos = copy.deepcopy(start_pos)
             next_moves(next_move[1][0])
     else:
         previous_pos = None
-    if game_map.my_bot.speed > 0:
-        # if not previous_pos or my_pos != previous_pos:
-        if not player_id or player_id != GameInfo.PLAYER_ID:
-            drive_bot(game_map)
+    if not (player_id == GameInfo.PLAYER_ID):
+        drive_bot(game_map)
 
     # update latest power of bots
     my_power = min(game_map.my_bot.power, 3)
