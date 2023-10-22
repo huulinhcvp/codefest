@@ -416,7 +416,7 @@ class GameMap:
             # Move to 4 directions next to current position.
             delta = self.heuristic_func(pos, cur_pos, -1)
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
-                if pos in self.targets.keys() or pos in self.bomb_targets.keys():
+                if pos in self.targets.keys():
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                         perfected_routes = routes, poses, score
                         break
@@ -424,6 +424,15 @@ class GameMap:
                         if power + 1 < delta < power + 5:
                             greedy_routes.appendleft((routes, poses, score))
                             break
+                elif pos in self.bomb_targets.keys():
+                    if self.bomb_targets[pos] >= 2:
+                        if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
+                            perfected_routes = routes, poses, score
+                            break
+                        else:
+                            if power + 1 < delta < power + 5:
+                                greedy_routes.appendleft((routes, poses, score))
+                                break
                 else:
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                         if not safe_routes:
