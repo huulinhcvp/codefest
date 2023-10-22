@@ -202,7 +202,7 @@ class GameMap:
     def num_balk(self, pos):
         """Return True if pos near the balk."""
         num_balk = 0
-        power = min(self.my_bot.power, 4)
+        power = min(self.my_bot.power, 3)
         tmp = copy.deepcopy(valid_pos_set)
         tmp.add(InvalidPos.TEMP.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
@@ -309,7 +309,7 @@ class GameMap:
         for bomb_pos, bomb_info in self.bombs_danger.items():
             # power = bomb_info['power']
             for direction in attack_directions:
-                for i in range(1, 5):  # increase safe
+                for i in range(1, 4):  # increase safe
                     attack = i * direction
                     danger_row = bomb_pos[0] + attack[0]
                     danger_col = bomb_pos[1] + attack[1]
@@ -395,7 +395,7 @@ class GameMap:
         return res
 
     def finding_safe_zones_v2(self, cur_pos):
-        power = min(self.my_bot.power, 4)
+        power = min(self.my_bot.power, 3)
         # self._fill_my_danger_zones(cur_pos, power)
         unsafe_routes = deque()
         safe_routes = None
@@ -418,8 +418,9 @@ class GameMap:
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
                 if pos in self.targets.keys():
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                        perfected_routes = routes, poses, score
-                        break
+                        if delta < 9:
+                            perfected_routes = routes, poses, score
+                            break
                     else:
                         if power + 1 < delta < power + 5:
                             greedy_routes.appendleft((routes, poses, score))
@@ -427,8 +428,9 @@ class GameMap:
                 elif pos in self.bomb_targets.keys():
                     if self.bomb_targets[pos] >= 2:
                         if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                            perfected_routes = routes, poses, score
-                            break
+                            if delta < 9:
+                                perfected_routes = routes, poses, score
+                                break
                         else:
                             if power + 1 < delta < power + 5:
                                 greedy_routes.appendleft((routes, poses, score))
@@ -690,8 +692,8 @@ def map_state(data):
         drive_bot(game_map)
 
     # update latest power of bots
-    my_power = min(game_map.my_bot.power, 4)
-    opp_power = min(game_map.opp_bot.power, 4)
+    my_power = min(game_map.my_bot.power, 3)
+    opp_power = min(game_map.opp_bot.power, 3)
 
 
 def drive_bot(game_map):
