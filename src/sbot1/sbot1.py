@@ -29,15 +29,12 @@ normal_queue = []
 saved_routes = dict()
 previous_pos = None
 previous_timestamp = 0
-# make_decision = (None, None)
 max_time = 0
 last_directions = ''
 
 my_power = 1
 opp_power = 1
 bomb_timestamp = 0
-# my_bombs = dict()
-# opp_bombs = dict()
 attack_directions = np.array([[-1, 0], [0, -1], [0, 1], [1, 0]])
 egg_directions = np.array([[-1, 0], [0, -1], [0, 1], [1, 0], [-1, 1], [1, -1], [1, 1], [-1, -1]])
 directions = {
@@ -205,7 +202,7 @@ class GameMap:
     def num_balk(self, pos):
         """Return True if pos near the balk."""
         num_balk = 0
-        power = min(self.my_bot.power, 3)
+        power = min(self.my_bot.power, 4)
         tmp = copy.deepcopy(valid_pos_set)
         tmp.add(InvalidPos.TEMP.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
@@ -214,12 +211,9 @@ class GameMap:
                 attack = i * direction
                 row = pos[0] + attack[0]
                 col = pos[1] + attack[1]
-                # print(f'Road {pos}: ({row}, {col})')
                 if row < 0 or row >= self.max_row or col < 0 or col >= self.max_col:
                     break
                 if self.map_matrix[row][col] in tmp:
-                    # if (row, col) == self.opp_bot.pos:
-                    #     num_balk += 1
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
                     num_balk += 1
@@ -315,7 +309,7 @@ class GameMap:
         for bomb_pos, bomb_info in self.bombs_danger.items():
             # power = bomb_info['power']
             for direction in attack_directions:
-                for i in range(1, 4):  # increase safe
+                for i in range(1, 5):  # increase safe
                     attack = i * direction
                     danger_row = bomb_pos[0] + attack[0]
                     danger_col = bomb_pos[1] + attack[1]
@@ -401,7 +395,7 @@ class GameMap:
         return res
 
     def finding_safe_zones_v2(self, cur_pos):
-        power = min(self.my_bot.power, 3)
+        power = min(self.my_bot.power, 4)
         # self._fill_my_danger_zones(cur_pos, power)
         unsafe_routes = deque()
         safe_routes = None
@@ -687,8 +681,8 @@ def map_state(data):
         drive_bot(game_map)
 
     # update latest power of bots
-    my_power = min(game_map.my_bot.power, 3)
-    opp_power = min(game_map.opp_bot.power, 3)
+    my_power = min(game_map.my_bot.power, 4)
+    opp_power = min(game_map.opp_bot.power, 4)
 
 
 def drive_bot(game_map):
