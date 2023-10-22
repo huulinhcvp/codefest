@@ -399,3 +399,6 @@ map_matrix = [
 np_matrix = np.array(map_matrix)  # convert list map_matrix to ndarray data type
 
 np_matrix[2][3] = 9
+
+print(np.count_nonzero(np_matrix == 9))
+
