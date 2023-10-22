@@ -491,7 +491,8 @@ class GameMap:
 
     def fill_map(self):
         """Fill all map matrix"""
-        self._fill_telegate()
+        if self.tag != 'start-game':
+            self._fill_telegate()
         self._fill_spoils(self.map_info['spoils'])
         self._fill_bombs(self.map_info['bombs'])
         self._fill_bomb_danger_zones()
@@ -539,29 +540,29 @@ class GameMap:
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
                 if pos in self.targets.keys():
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                        if delta < 7:
+                        if delta < 9:
                             perfected_routes = routes, poses, score
                             break
                     else:
-                        if power < delta < power + 3:
+                        if power < delta < power + 5:
                             greedy_routes.appendleft((routes, poses, score))
                             break
-                # elif pos in self.bomb_targets.keys():
-                #     if self.bomb_targets[pos] >= 2:
-                #         if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                #             if delta < 7:
-                #                 perfected_routes = routes, poses, score
-                #                 break
-                #         else:
-                #             if power < delta < power + 3:
-                #                 greedy_routes.appendleft((routes, poses, score))
-                #                 break
+                elif pos in self.bomb_targets.keys():
+                    if self.bomb_targets[pos] >= 2:
+                        if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
+                            if delta < 9:
+                                perfected_routes = routes, poses, score
+                                break
+                        else:
+                            if power < delta < power + 5:
+                                greedy_routes.appendleft((routes, poses, score))
+                                break
                 else:
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                         if not safe_routes:
                             safe_routes = routes, poses, score
                     else:
-                        if power < delta < power + 3:
+                        if power < delta < power + 5:
                             unsafe_routes.appendleft((routes, poses, score))
 
             next_routes = []  # Save all routes along with related information.
@@ -834,7 +835,7 @@ def map_state(data):
         if not previous_pos:
             drive_bot(game_map)
         else:
-            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 200:
+            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 16:
                 previous_timestamp = game_map.timestamp
                 drive_bot(game_map)
 
@@ -876,7 +877,7 @@ def drive_bot(game_map):
         if game_map.opp_bot.pos == opp_pos:
             count_opp += 1
         counter += 1
-        if count_opp == 8 or counter == 8:
+        if count_opp == 32 or counter == 32:
             valid_pos_set.add(Spoil.EGG_MYSTIC.value)  # add egg mystic to valid pos
             valid_pos_set.add(InvalidPos.TEMP.value)
             free_route = free_bfs(game_map)
