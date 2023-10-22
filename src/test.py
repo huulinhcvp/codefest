@@ -1,5 +1,4 @@
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
 import numpy as np
 
 map_matrix = [
@@ -400,30 +399,3 @@ map_matrix = [
 np_matrix = np.array(map_matrix)  # convert list map_matrix to ndarray data type
 
 np_matrix[2][3] = 9
-
-cnt = np.count_nonzero(np_matrix == 2)
-
-
-def task1(y):
-    my_list = [i for i in range(1000000)]
-    return y in my_list
-
-
-def task2(x):
-    my_list = [i for i in range(1000000)]
-    return x not in my_list
-
-
-def processing():
-
-    with ProcessPoolExecutor(2) as executor:
-        job1 = executor.submit(task1, 999999)
-        job2 = executor.submit(task2, 1)
-        job_list = [job1, job2]
-
-        for res in as_completed(job_list):
-            print(res.result())
-
-
-if __name__ == "__main__":
-    processing()

@@ -113,6 +113,7 @@ class GameMap:
         self._id = data['id']
         self._timestamp = data['timestamp']
         self._map_info = data["map_info"]
+        self._player_id = data.get('player_id')
         self._my_bot = None
         self._opp_bot = None
         self._max_row = self.map_info['size']['rows']
@@ -139,6 +140,10 @@ class GameMap:
     @property
     def map_info(self):
         return self._map_info
+
+    @property
+    def player_id(self):
+        return self._player_id
 
     @property
     def my_bot(self):
@@ -213,8 +218,8 @@ class GameMap:
                 if row < 0 or row >= self.max_row or col < 0 or col >= self.max_col:
                     break
                 if self.map_matrix[row][col] in tmp:
-                    if (row, col) == self.opp_bot.pos:
-                        num_balk += 1
+                    # if (row, col) == self.opp_bot.pos:
+                    #     num_balk += 1
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
                     num_balk += 1
@@ -298,6 +303,13 @@ class GameMap:
                 'remain_time': remain_time
             }
 
+        if self.tag == 'bomb:setup' and self.player_id != GameInfo.PLAYER_ID:
+            # print(f'Player2 setup bomb... Please add to danger zones')
+            self.bombs_danger[self.opp_bot.pos] = {
+                    'power': self.opp_bot.power,
+                    'remain_time': 0
+                }
+
     def _fill_bomb_danger_zones(self):
         """Update danger positions to wall."""
         for bomb_pos, bomb_info in self.bombs_danger.items():
@@ -317,25 +329,25 @@ class GameMap:
                     elif self.map_matrix[danger_row][danger_col] in valid_pos_set:
                         self.map_matrix[danger_row][danger_col] = InvalidPos.BOMB.value
 
-    def _fill_opp_danger_zones(self):
-        self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = ValidPos.BALK.value
-        power = min(self.opp_bot.power, 3)
-        tmp = copy.deepcopy(valid_pos_set)
-        tmp.add(Spoil.EGG_MYSTIC.value)
-        for direction in attack_directions:
-            for i in range(1, power + 1):
-                attack = i * direction
-                danger_row = self.opp_bot.pos[0] + attack[0]
-                danger_col = self.opp_bot.pos[1] + attack[1]
-                # fill with value of WALL
-                if danger_row < 0 or danger_row >= self.max_row or danger_col < 0 or danger_col >= self.max_col:
-                    continue
-                if self.map_matrix[danger_row][danger_col] == 1:
-                    break
-                elif self.map_matrix[danger_row][danger_col] in invalid_pos_set:
-                    continue
-                elif self.map_matrix[danger_row][danger_col] in tmp:
-                    self.map_matrix[danger_row][danger_col] = InvalidPos.TEMP.value  # attack opp
+    # def _fill_opp_danger_zones(self):
+    #     self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = ValidPos.BALK.value
+    #     power = min(self.opp_bot.power, 3)
+    #     tmp = copy.deepcopy(valid_pos_set)
+    #     tmp.add(Spoil.EGG_MYSTIC.value)
+    #     for direction in attack_directions:
+    #         for i in range(1, power + 1):
+    #             attack = i * direction
+    #             danger_row = self.opp_bot.pos[0] + attack[0]
+    #             danger_col = self.opp_bot.pos[1] + attack[1]
+    #             # fill with value of WALL
+    #             if danger_row < 0 or danger_row >= self.max_row or danger_col < 0 or danger_col >= self.max_col:
+    #                 continue
+    #             if self.map_matrix[danger_row][danger_col] == 1:
+    #                 break
+    #             elif self.map_matrix[danger_row][danger_col] in invalid_pos_set:
+    #                 continue
+    #             elif self.map_matrix[danger_row][danger_col] in tmp:
+    #                 self.map_matrix[danger_row][danger_col] = InvalidPos.TEMP.value  # attack opp
 
     def _retrieve_all_targets(self):
         roads = list(zip(*np.where(self.map_matrix == 0)))
@@ -369,7 +381,7 @@ class GameMap:
         self._fill_spoils(self.map_info['spoils'])
         self._fill_bombs(self.map_info['bombs'])
         self._fill_bomb_danger_zones()
-        self._fill_opp_danger_zones()
+        # self._fill_opp_danger_zones()
         interval = self.timestamp - bomb_timestamp
         if interval >= self.my_bot.delay:
             self._update_targets()
@@ -650,31 +662,28 @@ def map_state(data):
     game_map = GameMap(cur_map)
     game_map.find_bots()
 
+    player_id = game_map.player_id
     game_tag = game_map.tag
     my_pos = game_map.my_bot.pos
 
     if game_tag == 'player:be-isolated' and game_map.map_matrix[my_pos[0]][my_pos[1]] == InvalidPos.QUARANTINE.value:
         normal_queue = []
 
+    if game_tag == 'bomb:setup' and player_id == GameInfo.PLAYER_ID:
+        bomb_timestamp = game_map.timestamp  # update bomb timestamp
+
+    print(f'{game_map.id} ** {game_tag} ** My pos: {my_pos} ** Opp pos: {game_map.opp_bot.pos}')
+
     if len(normal_queue) > 0:
         next_move = normal_queue.pop()
-        start_pos = next_move[1][1]
-        if not previous_pos or start_pos != previous_pos:
-            previous_pos = start_pos
-            if next_move[1][3] == 13:
-                bomb_timestamp = game_map.timestamp
-            next_moves(next_move[1][0])
-    else:
-        previous_pos = None
-        previous_timestamp = 0
-
+        # start_pos = next_move[1][1]
+        # if not previous_pos or start_pos != previous_pos:
+        # previous_pos = start_pos
+        next_moves(next_move[1][0])
     if game_map.my_bot.speed > 0:
-        if not previous_pos:
+        if not player_id or player_id != GameInfo.PLAYER_ID:
+            # previous_timestamp = game_map.timestamp
             drive_bot(game_map)
-        else:
-            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 16:
-                previous_timestamp = game_map.timestamp
-                drive_bot(game_map)
 
     # update latest power of bots
     my_power = min(game_map.my_bot.power, 3)
