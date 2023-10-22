@@ -579,6 +579,7 @@ def finding_path(game_map):
         if pos in game_map.bomb_targets:
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, game_map.bomb_targets[pos])
             if len(place_bombs) >= 3:
+                # print(f'DEBUG - {place_bombs} ** {next_poses}')
                 routes.extend(place_bombs)
                 poses.extend(next_poses)
                 normal_routes = (score, routes, poses, 13)
@@ -672,18 +673,20 @@ def map_state(data):
     if game_tag == 'bomb:setup' and player_id == GameInfo.PLAYER_ID:
         bomb_timestamp = game_map.timestamp  # update bomb timestamp
 
-    print(f'{game_map.id} ** {game_tag} ** My pos: {my_pos} ** Opp pos: {game_map.opp_bot.pos}')
+    # print(f'{game_map.id} ** {game_tag} ** My pos: {my_pos} ** Opp pos: {game_map.opp_bot.pos}')
 
     if len(normal_queue) > 0:
         next_move = normal_queue.pop()
-        # start_pos = next_move[1][1]
-        # if not previous_pos or start_pos != previous_pos:
-        # previous_pos = start_pos
-        next_moves(next_move[1][0])
+        start_pos = next_move[1][1]
+        if not previous_pos or start_pos != previous_pos:
+            previous_pos = start_pos
+            next_moves(next_move[1][0])
+    else:
+        previous_pos = None
     if game_map.my_bot.speed > 0:
-        if not player_id or player_id != GameInfo.PLAYER_ID:
-            # previous_timestamp = game_map.timestamp
-            drive_bot(game_map)
+        if not previous_pos:
+            if not player_id or player_id != GameInfo.PLAYER_ID:
+                drive_bot(game_map)
 
     # update latest power of bots
     my_power = min(game_map.my_bot.power, 3)
@@ -710,7 +713,7 @@ def drive_bot(game_map):
             if game_map.opp_bot.pos == opp_pos:
                 count_opp += 1
             counter += 1
-            if count_opp == 16 or counter == 16:
+            if count_opp == 32 or counter == 32:
                 valid_pos_set.add(Spoil.EGG_MYSTIC.value)  # add egg mystic to valid pos
                 valid_pos_set.add(InvalidPos.TEMP.value)
                 free_route = free_bfs(game_map)
