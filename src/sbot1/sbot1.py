@@ -548,7 +548,7 @@ class GameMap:
                             greedy_routes.appendleft((routes, poses, score))
                             break
                 elif pos in self.bomb_targets.keys():
-                    if self.bomb_targets[pos] >= 2:
+                    if self.bomb_targets[pos] >= 3:
                         if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                             if delta < 9:
                                 perfected_routes = routes, poses, score
