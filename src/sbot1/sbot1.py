@@ -30,6 +30,7 @@ saved_routes = dict()
 previous_pos = None
 previous_timestamp = 0
 max_time = 0
+max_len = -1
 last_directions = ''
 
 my_power = 1
@@ -548,7 +549,7 @@ class GameMap:
                             greedy_routes.appendleft((routes, poses, score))
                             break
                 elif pos in self.bomb_targets.keys():
-                    if self.bomb_targets[pos] >= 3:
+                    if self.bomb_targets[pos] >= 2:
                         if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                             if delta < 9:
                                 perfected_routes = routes, poses, score
@@ -633,11 +634,11 @@ class GameMap:
         if spoil_type == 0:
             bombs_power = self.num_balk(current_pos)
             if bombs_power >= 3:
-                cost -= 3
+                cost -= 7
             elif bombs_power == 2:
-                cost -= 1
+                cost -= 3
         elif spoil_type != -1:
-            cost -= 2
+            cost -= 4
         return cost
 
     @staticmethod
@@ -723,7 +724,7 @@ def finding_path(game_map):
         # Check whether the current position is the target or not.
         if pos in game_map.bomb_targets:
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, game_map.bomb_targets[pos])
-            if len(place_bombs) >= 3:
+            if len(place_bombs) >= 3 and len(next_poses) >= 2:
                 # print(f'DEBUG - {place_bombs} ** {next_poses}')
                 routes.extend(place_bombs)
                 poses.extend(next_poses)
@@ -825,7 +826,7 @@ def map_state(data):
         start_pos = next_move[1][1]
         if not previous_pos or start_pos != previous_pos:
             previous_pos = copy.deepcopy(start_pos)
-            if next_move[1][3] == 13:
+            if next_move[1][3] == 13 or next_move[1][3] == 5:
                 bomb_timestamp = game_map.timestamp
             next_moves(next_move[1][0])
     else:
@@ -850,13 +851,10 @@ def drive_bot(game_map):
     global counter
     global bomb_timestamp
     global max_time
+    global max_len
     game_map.fill_map()
-    # print(f'{game_map.id} ** Map Matrix: {game_map.map_matrix}')
-    # print(f'{game_map.id} ** Spoil targets: {game_map.targets} ** Bomb targets: {game_map.bomb_targets}')
-    # print(f'{game_map.id} ** Bombs: {game_map.bombs} ** Bombs Danger: {game_map.bombs_danger}')
     normal_routes = attack_mode(game_map)
     if normal_routes:
-        # print(f'{game_map.id} ** Attack routes: {normal_routes}')
         my_route = normal_routes[1]
         normal_queue.append(
             (game_map.id, (''.join(my_route), game_map.my_bot.pos, normal_routes[2], normal_routes[3])))
@@ -865,7 +863,6 @@ def drive_bot(game_map):
         counter = 0
     elif len(game_map.bomb_targets) > 0 or len(game_map.targets) > 0:
         normal_routes = finding_path(game_map)
-        # print(f'{game_map.id} ** Normal routes: {normal_routes}')
         if normal_routes:
             my_route = normal_routes[1]
             normal_queue.append(
@@ -877,11 +874,10 @@ def drive_bot(game_map):
         if game_map.opp_bot.pos == opp_pos:
             count_opp += 1
         counter += 1
-        if count_opp == 32 or counter == 32:
+        if count_opp == 13 or counter == 13:
             valid_pos_set.add(Spoil.EGG_MYSTIC.value)  # add egg mystic to valid pos
             valid_pos_set.add(InvalidPos.TEMP.value)
             free_route = free_bfs(game_map)
-            # print(f'{game_map.id} ** Free routes: {free_route}')
             if len(free_route) > 0:
                 my_route = free_route[1]
                 normal_queue.append(
