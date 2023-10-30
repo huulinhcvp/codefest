@@ -397,7 +397,7 @@ class GameMap:
 
         for old_bomb_pos, old_bomb_value in tmp_bombs.items():
             old_timestamp = old_bomb_value['timestamp']
-            if self.timestamp - old_timestamp <= 777:
+            if self.timestamp - old_timestamp <= 600:
                 self.bombs_danger[old_bomb_pos] = {
                     'power': old_bomb_value['power'],
                     'remain_time': 0
@@ -499,7 +499,7 @@ class GameMap:
     def _fill_my_danger_zones(self, cur_pos, power, tmp_matrix):
         # power = min(self.my_bot.power, 4)
         for direction in attack_directions:
-            for i in range(2, power + 2):
+            for i in range(1, power + 2):
                 attack = i * direction
                 danger_row = cur_pos[0] + attack[0]
                 danger_col = cur_pos[1] + attack[1]
@@ -514,7 +514,7 @@ class GameMap:
                     break
                 elif tmp_matrix[danger_row][danger_col] in invalid_pos_set:
                     continue
-                tmp_matrix[danger_row][danger_col] = InvalidPos.TEMP.value
+                tmp_matrix[danger_row][danger_col] = InvalidPos.BOMB.value
 
     def fill_map(self):
         """Fill all map matrix"""
@@ -546,6 +546,7 @@ class GameMap:
     def finding_safe_zones_v2(self, cur_pos):
         power = min(self.my_bot.power, 4)
         # self._fill_my_danger_zones(cur_pos, power)
+        # del self.bomb_targets[cur_pos]
         unsafe_routes = deque()
         safe_routes = None
         greedy_routes = deque()
@@ -555,18 +556,19 @@ class GameMap:
         move_queue = deque()
         move_queue.append([cur_pos, deque(), deque(), 0])
 
-        # count = 1
+        count = 1
         tmp_matrix = np.array(self.map_matrix)
-        self._fill_my_danger_zones(cur_pos, power, tmp_matrix)
 
         while len(move_queue) > 0:
+            if count == 2:
+                self._fill_my_danger_zones(cur_pos, power, tmp_matrix)
             pos, routes, poses, score = move_queue.popleft()
             # Move to 4 directions next to current position.
             delta = self.heuristic_func(pos, cur_pos, -1)
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
                 if pos in self.targets.keys():
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                        if delta < 9:
+                        if delta < 11:
                             perfected_routes = routes, poses, score
                             break
                     else:
@@ -576,7 +578,7 @@ class GameMap:
                 elif pos in self.bomb_targets.keys():
                     if self.bomb_targets[pos] >= 2:
                         if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                            if delta < 9:
+                            if delta < 11:
                                 perfected_routes = routes, poses, score
                                 break
                         else:
@@ -620,7 +622,7 @@ class GameMap:
                 p = copy.deepcopy(poses)
                 p.append(move[0])
                 move_queue.append([move[0], r, p, move[1]])
-            # count += 1
+            count += 1
 
         # self._fill_my_danger_zones(cur_pos, power)
 
@@ -663,7 +665,7 @@ class GameMap:
             elif bombs_power == 2:
                 cost -= 3
         elif spoil_type != -1:
-            cost -= 4
+            cost -= 13
         return cost
 
     @staticmethod
@@ -722,6 +724,7 @@ def free_bfs(game_map):
 
 def attack_mode(game_map):
     bias = game_map.is_safe_time()
+    normal_routes = PriorityQueue()
     if bias >= 0:
         # print(f'In safe time...')
         pos, routes, poses, score = game_map.is_connected_to_opp_egg()
@@ -731,13 +734,13 @@ def attack_mode(game_map):
             if len(place_bombs) >= 3:
                 routes.extend(place_bombs)
                 poses.extend(next_poses)
-                normal_routes = (score, routes, poses, 5)
+                normal_routes.put((score, (score, routes, poses, 5)))
                 return normal_routes
-    return None
+    return normal_routes
 
 
 def finding_path(game_map):
-    normal_routes = None
+    normal_routes = PriorityQueue()
 
     move_queue = deque()
     # queue element [pos, routes, score]
@@ -755,10 +758,11 @@ def finding_path(game_map):
             if len(place_bombs) >= 3 and len(next_poses) >= 2:
                 routes.extend(place_bombs)
                 poses.extend(next_poses)
-                normal_routes = (score, routes, poses, 13)
-                break
+                normal_routes.put((score - game_map.bomb_targets[pos] - 7, (score, routes, poses, 13)))
+                if game_map.bomb_targets[pos] >= 3:
+                    break
         if pos in game_map.targets:
-            normal_routes = (score, routes, poses, game_map.targets[pos])
+            normal_routes.put((score - 17, (score, routes, poses, game_map.targets[pos])))
             break
 
         # Move to 4 directions next to current position.
@@ -863,7 +867,7 @@ def map_state(data):
         if not previous_pos:
             drive_bot(game_map)
         else:
-            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 20:
+            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) > 32:
                 previous_timestamp = game_map.timestamp
                 drive_bot(game_map)
 
@@ -881,23 +885,25 @@ def drive_bot(game_map):
     global max_len
     game_map.fill_map()
     normal_routes = attack_mode(game_map)
-    if normal_routes:
-        my_route = normal_routes[1]
+    if not normal_routes.empty():
+        priority_routes = normal_routes.get()[1]
+        my_route = priority_routes[1]
         normal_queue.append(
-            (game_map.id, (''.join(my_route), game_map.my_bot.pos, normal_routes[2], normal_routes[3])))
+            (game_map.id, (''.join(my_route), game_map.my_bot.pos, priority_routes[2], priority_routes[3])))
         opp_pos = game_map.opp_bot.pos
         count_opp = 0
         counter = 0
     elif len(game_map.bomb_targets) > 0 or len(game_map.targets) > 0:
         normal_routes = finding_path(game_map)
-        if normal_routes:
-            my_route = normal_routes[1]
+        if not normal_routes.empty():
+            priority_routes = normal_routes.get()[1]
+            my_route = priority_routes[1]
             normal_queue.append(
-                (game_map.id, (''.join(my_route), game_map.my_bot.pos, normal_routes[2], normal_routes[3])))
+                (game_map.id, (''.join(my_route), game_map.my_bot.pos, priority_routes[2], priority_routes[3])))
             opp_pos = game_map.opp_bot.pos
             count_opp = 0
             counter = 0
-    if not normal_routes:
+    if normal_routes.empty():
         if game_map.opp_bot.pos == opp_pos:
             count_opp += 1
         counter += 1
