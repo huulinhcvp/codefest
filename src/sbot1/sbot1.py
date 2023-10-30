@@ -215,6 +215,7 @@ class GameMap:
         power = min(self.my_bot.power, 4)
         tmp = copy.deepcopy(valid_pos_set)
         tmp.add(InvalidPos.TEMP.value)
+        tmp.add(InvalidPos.BOMB.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
         for direction in attack_directions:
             for i in range(1, power + 1):
@@ -226,7 +227,10 @@ class GameMap:
                 if self.map_matrix[row][col] in tmp:
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
-                    num_balk += 1
+                    if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
+                        num_balk += 5
+                    else:
+                        num_balk += 1
                     break
                 elif self.map_matrix[row][col] == 1:
                     break
@@ -405,12 +409,12 @@ class GameMap:
             else:
                 del list_bombs[old_bomb_pos]
 
-        if self.tag == 'bomb:setup' and self.player_id != GameInfo.PLAYER_ID:
-            # print(f'Player2 setup bomb... Please add to danger zones')
-            self.bombs_danger[self.opp_bot.pos] = {
-                'power': self.opp_bot.power,
-                'remain_time': 0
-            }
+        # if self.tag == 'bomb:setup' and self.player_id != GameInfo.PLAYER_ID:
+        #     # print(f'Player2 setup bomb... Please add to danger zones')
+        self.bombs_danger[self.opp_bot.pos] = {
+            'power': self.opp_bot.power,
+            'remain_time': 0
+        }
 
     def _fill_bomb_danger_zones(self):
         """Update danger positions to wall."""
@@ -451,7 +455,7 @@ class GameMap:
                 elif self.map_matrix[danger_row][danger_col] in invalid_pos_set:
                     continue
                 elif self.map_matrix[danger_row][danger_col] in tmp:
-                    self.map_matrix[danger_row][danger_col] = InvalidPos.TEMP.value  # attack opp
+                    self.map_matrix[danger_row][danger_col] = InvalidPos.BOMB.value  # attack opp
 
     def _retrieve_all_targets(self):
         roads = list(zip(*np.where(self.map_matrix == 0)))
