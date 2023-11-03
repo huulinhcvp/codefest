@@ -335,7 +335,7 @@ class GameMap:
             delta = self.heuristic_func(pos, self.my_bot.pos, -1)
 
             # do not approach the target if the path is quite far
-            if num_balks >= 2 and delta <= 7:
+            if num_balks >= 2:
                 self.targets[pos] = 0
 
     def _fill_my_danger_zones(self, cur_pos, power):
