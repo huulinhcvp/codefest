@@ -196,7 +196,7 @@ class GameMap:
                 player_score,
                 player_delay
             )
-            if player_id == GameInfo.PLAYER_ID:
+            if player_id and GameInfo.PLAYER_ID in player_id:
                 self.my_bot = game_bot
             else:
                 self.opp_bot = game_bot
@@ -204,7 +204,7 @@ class GameMap:
         for egg in self.map_info['dragonEggGSTArray']:
             egg_pos = (egg.get('row'), egg.get('col'))
             player_id = egg.get('id')
-            if player_id == GameInfo.PLAYER_ID:
+            if player_id and GameInfo.PLAYER_ID in player_id:
                 self.my_bot.egg = egg_pos
             else:
                 self.opp_bot.egg = egg_pos
@@ -344,7 +344,7 @@ class GameMap:
                     self.map_matrix[row][col] = ValidPos.ROAD.value
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
                     # Please do not place bombs to explode in the vicinity of your eggs.
-                    self.map_matrix[row][col] = InvalidPos.WALL.value  # 5
+                    self.map_matrix[row][col] = InvalidPos.WALL.value  # 1
             for i in range(1, 4):
                 attack = i * direction
                 opp_row = opp_egg_pos[0] + attack[0]
@@ -364,18 +364,19 @@ class GameMap:
             col = spoil['col']
             spoil_type = spoil['spoil_type'] + Spoil.BIAS.value
 
-            # 6: Speed, 7: Power, 8: Delay, 9: Mystic
-            self.map_matrix[row][col] = spoil_type
-            if spoil_type in target_pos_set:
-                # save all position of targets
-                self.targets[(row, col)] = spoil_type
-            else:
-                delta = self.heuristic_func((row, col), self.opp_bot.egg, -1)
-                if delta <= 3:
+            if self.map_matrix[row][col] == ValidPos.ROAD.value:
+                # 6: Speed, 7: Power, 8: Delay, 9: Mystic
+                self.map_matrix[row][col] = spoil_type
+                if spoil_type in target_pos_set:
+                    # save all position of targets
                     self.targets[(row, col)] = spoil_type
-                    self.map_matrix[row][col] = 6  # add mystic to valid spoil
+                # else:
+                #     delta = self.heuristic_func((row, col), self.opp_bot.egg, -1)
+                #     if delta <= 3:
+                #         self.targets[(row, col)] = spoil_type
+                #         self.map_matrix[row][col] = 6  # add mystic to valid spoil
 
-            self.spoils[(row, col)] = spoil_type
+                self.spoils[(row, col)] = spoil_type
 
     def _fill_bombs(self, map_bombs):
         """Fill all bombs into the map matrix."""
@@ -390,7 +391,7 @@ class GameMap:
             # self.map_matrix[bomb_pos[0]][bomb_pos[1]] = InvalidPos.BOMB.value
 
             # set power to bombs in map matrix
-            if GameInfo.PLAYER_ID in player_id:
+            if player_id and GameInfo.PLAYER_ID in player_id:
                 bomb_power = my_power
 
             else:
@@ -600,11 +601,11 @@ class GameMap:
         """Fill all map matrix"""
         # if self.tag != 'start-game':
         #     self._fill_telegate()
-        self._fill_spoils(self.map_info['spoils'])
         self._fill_bombs(self.map_info['bombs'])
         self._fill_bomb_danger_zones()
         # self._fill_bomb_neighbor()
         # self._fill_opp_danger_zones()
+        self._fill_spoils(self.map_info['spoils'])
         interval = self.timestamp - bomb_timestamp
         if interval >= self.my_bot.delay:
             self._update_targets()
@@ -961,9 +962,9 @@ def map_state(data):
     game_tag = game_map.tag
     my_pos = game_map.my_bot.pos
 
-    if game_tag == 'player:be-isolated' and player_id == GameInfo.PLAYER_ID:
+    if game_tag == 'player:be-isolated' and (player_id and GameInfo.PLAYER_ID in player_id):
         normal_queue = []
-    elif game_tag == 'player:back-to-playground' and player_id == GameInfo.PLAYER_ID:
+    elif game_tag == 'player:back-to-playground' and (player_id and GameInfo.PLAYER_ID in player_id):
         normal_queue = []
 
     # elif game_tag == 'bomb:setup' and player_id == GameInfo.PLAYER_ID:
@@ -980,7 +981,7 @@ def map_state(data):
     else:
         previous_pos = None
         previous_timestamp = 0
-    if not (player_id == GameInfo.PLAYER_ID):
+    if not (player_id and GameInfo.PLAYER_ID in player_id):
         if not previous_pos:
             drive_bot(game_map)
         else:
