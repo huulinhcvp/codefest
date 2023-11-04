@@ -372,11 +372,6 @@ class GameMap:
                 if spoil_type in target_pos_set:
                     # save all position of targets
                     self.targets[(row, col)] = spoil_type
-                # else:
-                #     delta = self.heuristic_func((row, col), self.opp_bot.egg, -1)
-                #     if delta <= 3:
-                #         self.targets[(row, col)] = spoil_type
-                #         self.map_matrix[row][col] = 6  # add mystic to valid spoil
 
                 self.spoils[(row, col)] = spoil_type
 
@@ -388,9 +383,6 @@ class GameMap:
             bomb_power = 1
             remain_time = bomb['remainTime']
             player_id = bomb['playerId']
-
-            # 13: Bomb
-            # self.map_matrix[bomb_pos[0]][bomb_pos[1]] = InvalidPos.BOMB.value
 
             # set power to bombs in map matrix
             if player_id and GameInfo.PLAYER_ID in player_id:
@@ -598,9 +590,10 @@ class GameMap:
         #     self._fill_telegate()
         self._fill_bombs(self.map_info['bombs'])
         self._fill_bomb_danger_zones()
+        self._fill_bomb_danger_zones()
         # self._fill_bomb_neighbor()
-        self._fill_opp_danger_zones()
         self._fill_spoils(self.map_info['spoils'])
+        self._fill_opp_danger_zones()
         interval = self.timestamp - bomb_timestamp
         if interval >= self.my_bot.delay:
             self._update_targets()
@@ -1045,7 +1038,7 @@ def drive_bot(game_map):
         if game_map.opp_bot.pos == opp_pos:
             count_opp += 1
         counter += 1
-        if count_opp == 7 or counter == 7:
+        if count_opp == 13 or counter == 13:
             free_route = free_bfs(game_map)
             if len(free_route) > 0:
                 my_route = free_route[1]
