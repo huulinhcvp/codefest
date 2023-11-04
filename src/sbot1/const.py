@@ -1,6 +1,6 @@
 from enum import Enum
 
-bombs_threshold = 1500  # ms
+bombs_threshold = 1650  # ms
 invalid_pos_set = {1, 3, 4, 5, 13}
 valid_pos_set = {0, 6, 7, 8}
 target_pos_set = {6, 7, 8}

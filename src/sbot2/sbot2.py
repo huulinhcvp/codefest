@@ -1068,7 +1068,7 @@ def drive_bot(game_map):
 
 
 def main():
-    sio.connect('http://localhost:80', transports=['websocket'])
+    sio.connect('http://localhost', transports=['websocket'])
     sio.wait()
 
 
