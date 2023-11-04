@@ -687,7 +687,6 @@ class GameMap:
                         if power + 1 <= delta < power + 5:
                             unsafe_routes.appendleft((routes, poses, score))
 
-            avail_len = len(self.avail_moves(pos))
             next_routes = []  # Save all routes along with related information.
             for route, direction in directions.items():
                 next_pos = (pos[0] + direction[0], pos[1] + direction[1])
@@ -698,13 +697,6 @@ class GameMap:
                 # invalid positions
                 if next_pos[0] < 0 or next_pos[0] >= self.max_row or next_pos[1] < 0 or next_pos[1] >= self.max_col:
                     continue
-                if 0 <= neighbor_pos[0] < self.max_row and 0 <= neighbor_pos[1] < self.max_col:
-                    if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
-                        if avail_len > 2:
-                            if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
-                                continue
-                        if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
-                            continue
                 if next_pos == self.my_bot.pos:
                     continue
                 # valid positions
@@ -717,6 +709,12 @@ class GameMap:
                         # est_score -= penalty
                         if est_score < min_score:
                             min_score = est_score
+                    if 0 <= neighbor_pos[0] < self.max_row and 0 <= neighbor_pos[1] < self.max_col:
+                        if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
+                            if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
+                                min_score += 1000000
+                            if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
+                                min_score += 1000000
                     saved.add(next_pos)
                     min_score = min_score - 2 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
                     next_routes.append([next_pos, score + 1, score + min_score, route.value])
@@ -871,7 +869,7 @@ def finding_path(game_map):
             normal_routes.put((score - 17, (score, routes, poses, game_map.targets[pos])))
             break
 
-        avail_len = len(game_map.avail_moves(pos))
+        # avail_len = len(game_map.avail_moves(pos))
         # Move to 4 directions next to current position.
         next_routes = []  # Save all routes along with related information.
         for route, direction in directions.items():
@@ -883,13 +881,6 @@ def finding_path(game_map):
             # invalid positions
             if next_pos[0] < 0 or next_pos[0] >= game_map.max_row or next_pos[1] < 0 or next_pos[1] >= game_map.max_col:
                 continue
-            if 0 <= neighbor_pos[0] < game_map.max_row and 0 <= neighbor_pos[1] < game_map.max_col:
-                if game_map.map_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
-                    if avail_len > 2:
-                        if game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
-                            continue
-                    if game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
-                        continue
             # valid positions
             if game_map.map_matrix[next_pos[0]][next_pos[1]] in valid_pos_set:
                 min_score = 1000000
@@ -908,6 +899,12 @@ def finding_path(game_map):
                     # est_score -= penalty
                     if est_score < min_score:
                         min_score = est_score
+                if 0 <= neighbor_pos[0] < game_map.max_row and 0 <= neighbor_pos[1] < game_map.max_col:
+                    if game_map.map_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
+                        if game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
+                            min_score += 1000000
+                        if game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
+                            min_score += 1000000
                 saved.add(next_pos)
                 min_score = min_score - 2 * game_map.heuristic_func(next_pos, game_map.opp_bot.pos, -1)
                 # At the current position (next_pos), add to the queue the direction of movement closest to the target.
@@ -1006,25 +1003,24 @@ def drive_bot(game_map):
     game_map.fill_map()
     # start_time = time.time()
     normal_routes = PriorityQueue()
-    if game_map.in_opp_danger_zones():
-        routes, poses, score = [], [], 0
-        _, place_bombs, next_poses = game_map.greedy_place_bombs(game_map.my_bot.pos, 3)
-        if len(place_bombs) >= 3 and len(next_poses) >= 2:
-            routes.extend(place_bombs)
-            poses.extend(next_poses)
-            normal_routes.put((score - 10, (score, routes, poses, 13)))
-        else:
-            avail_moves = game_map.avail_moves(game_map.my_bot.pos)
-            if len(avail_moves) > 0:
-                next_move = avail_moves[0]
-                normal_routes.put((0, (0, [next_move[0]], [next_move[1]], -1)))
-            else:
-                avail_moves = game_map.avail_moves(game_map.my_bot.pos, True)
-                if len(avail_moves) > 0:
-                    for next_move in avail_moves:
-                        score = game_map.heuristic_func(next_move[1], game_map.opp_bot.pos, -1)
-                        normal_routes.put((score * -1, (score * -1, [next_move[0]], [next_move[1]], -1)))
-
+    # if game_map.in_opp_danger_zones():
+    #     routes, poses, score = [], [], 0
+    #     _, place_bombs, next_poses = game_map.greedy_place_bombs(game_map.my_bot.pos, 3)
+    #     if len(place_bombs) >= 3 and len(next_poses) >= 2:
+    #         routes.extend(place_bombs)
+    #         poses.extend(next_poses)
+    #         normal_routes.put((score - 10, (score, routes, poses, 13)))
+    #     else:
+    #         avail_moves = game_map.avail_moves(game_map.my_bot.pos)
+    #         if len(avail_moves) > 0:
+    #             next_move = avail_moves[0]
+    #             normal_routes.put((0, (0, [next_move[0]], [next_move[1]], -1)))
+    #         else:
+    #             avail_moves = game_map.avail_moves(game_map.my_bot.pos, True)
+    #             if len(avail_moves) > 0:
+    #                 for next_move in avail_moves:
+    #                     score = game_map.heuristic_func(next_move[1], game_map.opp_bot.pos, -1)
+    #                     normal_routes.put((score * -1, (score * -1, [next_move[0]], [next_move[1]], -1)))
     if not normal_routes.empty():
         priority_routes = normal_routes.get()[1]
         my_route = priority_routes[1]
