@@ -418,7 +418,7 @@ class GameMap:
 
         for old_bomb_pos, old_bomb_value in tmp_bombs.items():
             old_timestamp = old_bomb_value['timestamp']
-            if self.timestamp - old_timestamp <= 1000:
+            if self.timestamp - old_timestamp <= 800:
                 self.bombs_danger[old_bomb_pos] = {
                     'power': old_bomb_value['power'],
                     'remain_time': 0
