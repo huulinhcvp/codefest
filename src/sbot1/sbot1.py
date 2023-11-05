@@ -813,13 +813,9 @@ def attack_mode_v1(game_map):
         delta = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.pos, -1)
     normal_routes = PriorityQueue()
     if delta <= 7:
-        # print(f'{game_map.id} ** Attack mode ** My pos: {game_map.my_bot.lives} ** {game_map.my_bot.pos} ** Opp pos: {game_map.opp_bot.pos}')
         pos, routes, poses, score = game_map.is_connected_to_opp()
-        # print(f'{game_map.id} ** Go to opp poses: {poses}')
-        if pos and (delta == 0 or len(poses) <= 17):
-            # print(f'Can attack!')
+        if pos and (delta == 0 or len(poses) <= 13):
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos)
-            # print(f'{game_map.id} ** Next poses: {next_poses}')
             if len(place_bombs) >= 3 and len(next_poses) >= 2:
                 routes.extend(place_bombs)
                 poses.extend(next_poses)
