@@ -441,29 +441,28 @@ class GameMap:
                     elif self.map_matrix[danger_row][danger_col] in valid_pos_set:
                         self.map_matrix[danger_row][danger_col] = InvalidPos.BOMB.value
 
-    def _fill_opp_danger_zones(self):
-        self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = ValidPos.BALK.value
-        # power = min(self.opp_bot.power, 4)
-        # tmp = copy.deepcopy(valid_pos_set)
-        # tmp.add(Spoil.EGG_MYSTIC.value)
-        # for direction in attack_directions:
-        #     for i in range(1, power + 1):
-        #         attack = i * direction
-        #         danger_row = self.opp_bot.pos[0] + attack[0]
-        #         danger_col = self.opp_bot.pos[1] + attack[1]
-        #         # fill with value of WALL
-        #         if danger_row < 0 or danger_row >= self.max_row or danger_col < 0 or danger_col >= self.max_col:
-        #             continue
-        #         if self.map_matrix[danger_row][danger_col] == 1:
-        #             break
-        #         elif self.map_matrix[danger_row][danger_col] == 2:
-        #             break
-        #         elif self.map_matrix[danger_row][danger_col] == 5:
-        #             break
-        #         elif self.map_matrix[danger_row][danger_col] in invalid_pos_set:
-        #             continue
-        #         elif self.map_matrix[danger_row][danger_col] in tmp:
-        #             self.map_matrix[danger_row][danger_col] = InvalidPos.TEMP.value  # attack opp
+    def fill_opp_danger_zones(self):
+        power = min(self.opp_bot.power, 4)
+        tmp = copy.deepcopy(valid_pos_set)
+        tmp.add(Spoil.EGG_MYSTIC.value)
+        for direction in attack_directions:
+            for i in range(1, power + 1):
+                attack = i * direction
+                danger_row = self.opp_bot.pos[0] + attack[0]
+                danger_col = self.opp_bot.pos[1] + attack[1]
+                # fill with value of WALL
+                if danger_row < 0 or danger_row >= self.max_row or danger_col < 0 or danger_col >= self.max_col:
+                    continue
+                if self.map_matrix[danger_row][danger_col] == 1:
+                    break
+                elif self.map_matrix[danger_row][danger_col] == 2:
+                    break
+                elif self.map_matrix[danger_row][danger_col] == 5:
+                    break
+                elif self.map_matrix[danger_row][danger_col] in invalid_pos_set:
+                    continue
+                elif self.map_matrix[danger_row][danger_col] in tmp:
+                    self.map_matrix[danger_row][danger_col] = InvalidPos.BOMB.value  # attack opp
 
     def in_opp_danger_zones(self):
         power = min(self.opp_bot.power, 4)
@@ -578,18 +577,14 @@ class GameMap:
 
     def fill_map(self):
         """Fill all map matrix"""
-        # if self.tag != 'start-game':
-        #     self._fill_telegate()
         self._fill_bombs(self.map_info['bombs'])
         self._fill_bomb_danger_zones()
-        # self._fill_bomb_neighbor()
         self._fill_spoils(self.map_info['spoils'])
-        self._fill_opp_danger_zones()
+        self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = ValidPos.BALK.value
         interval = self.timestamp - bomb_timestamp
         if interval >= self.my_bot.delay:
             self._update_targets()
         self._fill_eggs()
-        # print(f'All targets: {self.targets}')
 
     def avail_moves(self, cur_pos, temp=False):
         """All available moves with current position."""
@@ -816,11 +811,14 @@ def attack_mode_v1(game_map):
         pos, routes, poses, score = game_map.is_connected_to_opp()
         if pos and (delta == 0 or len(poses) <= 13):
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos)
-            if len(place_bombs) >= 3 and len(next_poses) >= 2:
+            if len(place_bombs) >= 3 and len(next_poses) >= 5:
                 routes.extend(place_bombs)
                 poses.extend(next_poses)
-                normal_routes.put((score, (score, routes, poses, 5)))
+                normal_routes.put((score, (score, routes, poses, 13)))
                 return normal_routes
+            else:
+                # Stay away from opponents
+                game_map.fill_opp_danger_zones()
     return normal_routes
 
 
@@ -981,6 +979,9 @@ def drive_bot(game_map):
     global max_len
     game_map.fill_map()
     # start_time = time.time()
+    # print(f'***** {game_map.id} GST CODE-FEST 2023 *****')
+    # print(f'***** {game_map.id} My pos: {game_map.my_bot.pos} === Opp pos: {game_map.opp_bot.pos}')
+    # print(game_map.map_matrix)
     normal_routes = attack_mode_v1(game_map)
     if not normal_routes.empty():
         priority_routes = normal_routes.get()[1]
