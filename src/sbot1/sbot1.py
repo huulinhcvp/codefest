@@ -418,13 +418,6 @@ class GameMap:
             else:
                 del list_bombs[old_bomb_pos]
 
-        # if self.tag == 'bomb:setup' and self.player_id != GameInfo.PLAYER_ID:
-        #     # print(f'Player2 setup bomb... Please add to danger zones')
-        self.bombs_danger[self.opp_bot.pos] = {
-            'power': self.opp_bot.power,
-            'remain_time': 0
-        }
-
     def _fill_bomb_danger_zones(self):
         """Update danger positions to wall."""
         for bomb_pos, bomb_info in self.bombs_danger.items():
@@ -588,7 +581,6 @@ class GameMap:
         # if self.tag != 'start-game':
         #     self._fill_telegate()
         self._fill_bombs(self.map_info['bombs'])
-        self._fill_bomb_danger_zones()
         self._fill_bomb_danger_zones()
         # self._fill_bomb_neighbor()
         self._fill_spoils(self.map_info['spoils'])
@@ -821,13 +813,13 @@ def attack_mode_v1(game_map):
         delta = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.pos, -1)
     normal_routes = PriorityQueue()
     if delta <= 7:
-        print(f'{game_map.id} ** Attack mode ** My pos: {game_map.my_bot.lives} ** {game_map.my_bot.pos} ** Opp pos: {game_map.opp_bot.pos}')
+        # print(f'{game_map.id} ** Attack mode ** My pos: {game_map.my_bot.lives} ** {game_map.my_bot.pos} ** Opp pos: {game_map.opp_bot.pos}')
         pos, routes, poses, score = game_map.is_connected_to_opp()
-        print(f'{game_map.id} ** Go to opp poses: {poses}')
+        # print(f'{game_map.id} ** Go to opp poses: {poses}')
         if pos and (delta == 0 or len(poses) <= 17):
             # print(f'Can attack!')
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos)
-            print(f'{game_map.id} ** Next poses: {next_poses}')
+            # print(f'{game_map.id} ** Next poses: {next_poses}')
             if len(place_bombs) >= 3 and len(next_poses) >= 2:
                 routes.extend(place_bombs)
                 poses.extend(next_poses)
@@ -993,8 +985,6 @@ def drive_bot(game_map):
     global max_len
     game_map.fill_map()
     # start_time = time.time()
-    print(f'=== {game_map.id} MAP MATRIX ===')
-    print(f'{game_map.map_matrix}')
     normal_routes = attack_mode_v1(game_map)
     if not normal_routes.empty():
         priority_routes = normal_routes.get()[1]
