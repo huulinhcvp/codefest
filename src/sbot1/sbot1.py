@@ -968,7 +968,7 @@ def map_state(data):
         if not previous_pos:
             drive_bot(game_map)
         else:
-            if my_pos != previous_pos:
+            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 200:
                 previous_timestamp = game_map.timestamp
                 drive_bot(game_map)
     # update latest power of bots
