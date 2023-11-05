@@ -816,7 +816,7 @@ def attack_mode_v1(game_map):
         # print(f'{game_map.id} ** Attack mode ** My pos: {game_map.my_bot.lives} ** {game_map.my_bot.pos} ** Opp pos: {game_map.opp_bot.pos}')
         pos, routes, poses, score = game_map.is_connected_to_opp()
         # print(f'{game_map.id} ** Go to opp poses: {poses}')
-        if pos and (delta == 0 or len(poses) <= 17):
+        if pos and (delta == 0 or len(poses) <= 37):
             # print(f'Can attack!')
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos)
             # print(f'{game_map.id} ** Next poses: {next_poses}')
