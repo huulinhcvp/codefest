@@ -242,7 +242,7 @@ class GameMap:
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
                     if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
-                        num_balk += 2
+                        continue
                     else:
                         num_balk += 1
                 elif self.map_matrix[row][col] == 1:
@@ -847,7 +847,7 @@ class GameMap:
 
         # count = 1
         tmp_matrix = np.array(self.map_matrix)
-        self.fill_opp_danger_zones(tmp_matrix)
+        # self.fill_opp_danger_zones(tmp_matrix)
 
         while len(move_queue) > 0:
             # if count == 2:
@@ -858,8 +858,9 @@ class GameMap:
                 delta1 = self.heuristic_func(pos, cur_pos, -1)
                 delta2 = self.heuristic_func(pos, self.opp_bot.pos, -1)
                 if pos in self.targets.keys():
-                    if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                        if delta1 < 13 and delta2 > 5:
+                    if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
+                            self.opp_bot.pos[1]:
+                        if delta1 < 13:
                             perfected_routes.append((routes, poses, score))
                             break
                     else:
@@ -868,8 +869,9 @@ class GameMap:
                             break
                 elif pos in self.bomb_targets.keys():
                     if self.bomb_targets[pos] < 2:
-                        if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                            if delta1 < 9 and delta2 > 5:
+                        if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
+                                self.opp_bot.pos[1]:
+                            if delta1 < 9:
                                 perfected_routes.append((routes, poses, score))
                                 break
                         else:
@@ -877,10 +879,10 @@ class GameMap:
                                 greedy_routes.appendleft((routes, poses, score))
                                 break
                 else:
-                    if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                        if delta2 > 5:
-                            safe_routes.append((routes, poses, score))
-                            break
+                    if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
+                            self.opp_bot.pos[1]:
+                        safe_routes.append((routes, poses, score))
+                        break
                     else:
                         if power + 1 <= delta1 < power + 5 and delta2 > 5:
                             unsafe_routes.append((routes, poses, score))
@@ -956,10 +958,10 @@ class GameMap:
             # Move to 4 directions next to current position.
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
                 delta2 = self.heuristic_func(pos, self.opp_bot.pos, -1)
-                if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
+                if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
+                        self.opp_bot.pos[1]:
                     safe_routes.append((routes, poses, score))
-                    if delta2 > 5:
-                        break
+                    break
                 else:
                     unsafe_routes.append((routes, poses, score))
                     if delta2 > 5 and score > 5:
@@ -1009,7 +1011,7 @@ class GameMap:
 
         return deque(), deque(), 0
 
-    def greedy_place_bombs(self, cur_pos, bombs_power=0, attack=False):
+    def greedy_place_bombs(self, cur_pos, bombs_power=0, attack=False, is_setup=False):
         """Return next_move is 'b' if my bot can place a bomb."""
         avail_moves = self.avail_moves(cur_pos)
         if len(avail_moves) == 0:
@@ -1023,7 +1025,8 @@ class GameMap:
             else:
                 moves, poses, _ = self.finding_safe_zones(cur_pos)
             if len(moves) >= 2 and len(poses) >= 2:
-                moves.appendleft('b')
+                if not is_setup:
+                    moves.appendleft('b')
                 return bombs_power, moves, poses
         return 0, [], []
 
@@ -1116,19 +1119,26 @@ def free_bfs(game_map):
 def attack_mode_v1(game_map):
     normal_routes = PriorityQueue()
     delta = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.pos, -1)
-    if delta <= 5:
+    if delta <= 3:
         pos, routes, poses, score = game_map.is_connected_to_opp()
-        if pos and (delta == 0 or len(poses) <= 13):
-            _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
-            if len(place_bombs) >= 3 and len(next_poses) >= 2:
-                if len(routes) == 0:
-                    routes.extend(place_bombs)
-                    poses.extend(next_poses)
-                    normal_routes.put((score, (score, routes, poses, 13)))
-                    return normal_routes
+        if pos and len(poses) <= 13:
+            if not (game_map.player_id and game_map.player_id in GameInfo.PLAYER_ID):
+                if 'bomb:setup' in game_map.tag:
+                    _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True, is_setup=True)
+                    if len(place_bombs) > 0 and len(next_poses) > 0:
+                        if len(routes) == 0:
+                            routes.extend(place_bombs)
+                            poses.extend(next_poses)
+                            normal_routes.put((score, (score, routes, poses, 13)))
+                            return normal_routes
                 else:
-                    normal_routes.put((score, (score, routes, poses, -1)))
-                    return normal_routes
+                    _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
+                    if len(place_bombs) >= 3 and len(next_poses) >= 2:
+                        if len(routes) == 0:
+                            routes.extend(place_bombs)
+                            poses.extend(next_poses)
+                            normal_routes.put((score, (score, routes, poses, 13)))
+                            return normal_routes
     return normal_routes
 
 
