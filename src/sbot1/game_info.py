@@ -1,3 +1,3 @@
 class GameInfo:
-    GAME_ID = "ded1b1dd-ddab-41cb-9be3-63c549a7df18"
-    PLAYER_ID = "01db0a7a-2bb5-49b8-88d0-b8cb3bfeb572"
+    GAME_ID = "bf0d409e-7282-437c-b6b6-c4b9af76a6a6"
+    PLAYER_ID = "f076f00e-3f31-4742-b5ec-401e98376b10"

@@ -21,6 +21,7 @@ sio = socketio.Client()
 map_states = []
 counter = 0
 count_opp = 0
+can_move = False
 opp_pos = None
 normal_queue = []
 saved_routes = dict()
@@ -30,8 +31,6 @@ max_time = 0
 max_len = -1
 last_directions = ''
 
-my_power = 1
-opp_power = 1
 bomb_timestamp = 0
 list_bombs = dict()
 attack_directions = np.array(
@@ -450,16 +449,9 @@ class GameMap:
         tmp_bombs = copy.deepcopy(list_bombs)
         for bomb in map_bombs:
             bomb_pos = (bomb['row'], bomb['col'])
-            bomb_power = 1
+            bomb_power = bomb['power']
             remain_time = bomb['remainTime']
             player_id = bomb['playerId']
-
-            # set power to bombs in map matrix
-            if player_id and player_id in GameInfo.PLAYER_ID:
-                bomb_power = my_power
-
-            else:
-                bomb_power = opp_power
 
             # Finding all bombs about to explode
             if remain_time <= bombs_threshold:  # default 2000ms
@@ -482,7 +474,7 @@ class GameMap:
 
         for old_bomb_pos, old_bomb_value in tmp_bombs.items():
             old_timestamp = old_bomb_value['timestamp']
-            if self.timestamp - old_timestamp <= 1000:
+            if self.timestamp - old_timestamp <= 1200:
                 self.bombs_danger[old_bomb_pos] = {
                     'power': old_bomb_value['power'],
                     'remain_time': 0
@@ -497,9 +489,10 @@ class GameMap:
         tmp.add(InvalidPos.BOMB.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
         for bomb_pos, bomb_info in self.bombs_danger.items():
+            power = bomb_info.get('power', 4)
             self.map_matrix[bomb_pos[0]][bomb_pos[1]] = InvalidPos.BOMB.value
             for direction in attack_directions:
-                for i in range(1, 5):  # increase safe
+                for i in range(1, power + 1):  # increase safe
                     attack = i * direction
                     danger_row = bomb_pos[0] + attack[0]
                     danger_col = bomb_pos[1] + attack[1]
@@ -1119,26 +1112,14 @@ def free_bfs(game_map):
 def attack_mode_v1(game_map):
     normal_routes = PriorityQueue()
     delta = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.pos, -1)
-    if delta <= 3:
+    if delta <= 5:
         pos, routes, poses, score = game_map.is_connected_to_opp()
         if pos and len(poses) <= 13:
-            if not (game_map.player_id and game_map.player_id in GameInfo.PLAYER_ID):
-                if 'bomb:setup' in game_map.tag:
-                    _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True, is_setup=True)
-                    if len(place_bombs) > 0 and len(next_poses) > 0:
-                        if len(routes) == 0:
-                            routes.extend(place_bombs)
-                            poses.extend(next_poses)
-                            normal_routes.put((score, (score, routes, poses, 13)))
-                            return normal_routes
-                else:
-                    _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
-                    if len(place_bombs) >= 3 and len(next_poses) >= 2:
-                        if len(routes) == 0:
-                            routes.extend(place_bombs)
-                            poses.extend(next_poses)
-                            normal_routes.put((score, (score, routes, poses, 13)))
-                            return normal_routes
+            _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
+            if len(place_bombs) > 0 and len(next_poses) > 0:
+                routes.extend(place_bombs)
+                poses.extend(next_poses)
+                normal_routes.put((score, (score, routes, poses, 13)))
     return normal_routes
 
 
@@ -1163,14 +1144,10 @@ def finding_path(game_map):
             if not game_map.near_spoil(pos):
                 _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, game_map.bomb_targets[pos])
                 if len(place_bombs) >= 3 and 2 <= len(next_poses):
-                    if len(routes) == 0:
-                        routes.extend(place_bombs)
-                        poses.extend(next_poses)
-                        normal_routes.put((score - game_map.bomb_targets[pos] - 7, (score, routes, poses, 13)))
-                        break
-                    else:
-                        normal_routes.put((score - game_map.bomb_targets[pos] - 7, (score, routes, poses, -1)))
-                        break
+                    routes.extend(place_bombs)
+                    poses.extend(next_poses)
+                    normal_routes.put((score - game_map.bomb_targets[pos] - 7, (score, routes, poses, 13)))
+                    break
 
         # Move to 4 directions next to current position.
         next_routes = []  # Save all routes along with related information.
@@ -1237,6 +1214,12 @@ def join_game(data):
     print(f'joined game!!!!, your id: {player_id}')
 
 
+@sio.on('drive player')
+def receive_moves(data):
+    global can_move
+    can_move = True
+
+
 @sio.event
 def next_moves(moves):
     sio.emit('drive player', {"direction": moves})
@@ -1250,8 +1233,10 @@ def connect():
 
 @sio.on('ticktack player')
 def map_state(data):
-    global my_power
-    global opp_power
+    global count_opp
+    global opp_pos
+    global counter
+    global can_move
     global normal_queue
     global bomb_timestamp
     global previous_timestamp
@@ -1261,6 +1246,7 @@ def map_state(data):
     cur_map = map_states.pop()
     game_map = GameMap(cur_map)
     game_map.find_bots()
+    game_map.fill_map()
 
     player_id = game_map.player_id
     game_tag = game_map.tag
@@ -1283,30 +1269,12 @@ def map_state(data):
                 bomb_timestamp = game_map.timestamp
             if len(next_move[1][0]) > 0:
                 next_moves(next_move[1][0])
+                previous_timestamp = game_map.timestamp
+                can_move = False
     else:
         previous_pos = None
-        previous_timestamp = 0
-    if not (player_id and player_id in GameInfo.PLAYER_ID):
-        if not previous_pos or 'bomb:setup' in game_tag:
-            previous_timestamp = game_map.timestamp
-            drive_bot(game_map)
-        else:
-            if my_pos != previous_pos and (game_map.timestamp - previous_timestamp) >= 300:
-                previous_timestamp = game_map.timestamp
-                drive_bot(game_map)
-    # update latest power of bots
-    my_power = min(game_map.my_bot.power, 4)
-    opp_power = min(game_map.opp_bot.power, 4)
+        # previous_timestamp = 0
 
-
-def drive_bot(game_map):
-    global count_opp
-    global opp_pos
-    global counter
-    global bomb_timestamp
-    global max_time
-    global max_len
-    game_map.fill_map()
     normal_routes = PriorityQueue()
     in_bomb = game_map.in_opp_bomb_zones()
     if in_bomb:
@@ -1321,6 +1289,24 @@ def drive_bot(game_map):
             opp_pos = game_map.opp_bot.pos
             count_opp = 0
             counter = 0
+    elif normal_routes.empty():
+        if player_id and player_id not in GameInfo.PLAYER_ID and can_move or (
+                game_map.timestamp - previous_timestamp) >= 400:
+            if not previous_pos or 'bomb:setup' in game_tag:
+                drive_bot(game_map, normal_routes)
+            else:
+                if my_pos != previous_pos:
+                    drive_bot(game_map, normal_routes)
+
+
+def drive_bot(game_map, normal_routes):
+    global count_opp
+    global opp_pos
+    global counter
+    global bomb_timestamp
+    global max_time
+    global max_len
+
     if normal_routes.empty():
         normal_routes = attack_mode_v1(game_map)
         if not normal_routes.empty():
