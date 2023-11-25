@@ -1335,6 +1335,10 @@ def map_state(data):
 
     if game_tag == 'bomb:explosed':
         time_explosed_bomb = 233
+        for bomb_pos, bomb_info in game_map.bombs_danger.items():
+            if bomb_info['remain_time'] < 250:
+                if game_map.heuristic_func(my_pos, bomb_pos) < 7:
+                    next_moves('x')
     else:
         time_explosed_bomb = 0
 
@@ -1350,6 +1354,8 @@ def map_state(data):
             if next_move[1][3] == 13 or next_move[1][3] == 5:
                 bomb_timestamp = game_map.timestamp
             # print(f'My pos: {my_pos} ** {next_move}')
+            if len(direction) > 4:
+                direction = direction[:5]
             next_moves(direction)
 
     normal_routes = PriorityQueue()
