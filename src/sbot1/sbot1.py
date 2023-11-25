@@ -232,6 +232,7 @@ class GameMap:
         tmp.add(InvalidPos.TEMP.value)
         tmp.add(InvalidPos.BOMB.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
+        tmp.add(InvalidPos.TELE_GATE.value)
         for direction in attack_directions:
             for i in range(1, power + 1):
                 attack = i * direction
@@ -243,7 +244,7 @@ class GameMap:
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
                     if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
-                        continue
+                        num_balk += 5
                     elif row == self.opp_bot.egg[0] and col == self.opp_bot.egg[1]:
                         num_balk += 3
                     else:
@@ -307,13 +308,22 @@ class GameMap:
     def can_attack(self, pos):
         power = min(self.my_bot.power, 4)
         tmp = copy.deepcopy(valid_pos_set)
+        tmp.add(InvalidPos.TEMP.value)
+        tmp.add(InvalidPos.BOMB.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
+        tmp.add(InvalidPos.TELE_GATE.value)
+        opp_neighbors = {self.opp_bot.pos}
+        for attack in attack_directions:
+            row = self.opp_bot.pos[0] + attack[0]
+            col = self.opp_bot.pos[1] + attack[1]
+            if self.map_matrix[row][col] in valid_pos_set:
+                opp_neighbors.add((row, col))
         for direction in attack_directions:
             for i in range(1, power + 1):
                 attack = i * direction
                 row = pos[0] + attack[0]
                 col = pos[1] + attack[1]
-                if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
+                if (row, col) in opp_neighbors:
                     return True
                 elif row < 0 or row >= self.max_row or col < 0 or col >= self.max_col:
                     break
@@ -493,6 +503,7 @@ class GameMap:
         tmp.add(InvalidPos.TEMP.value)
         tmp.add(InvalidPos.BOMB.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
+        tmp.add(InvalidPos.TELE_GATE.value)
         for bomb_pos, bomb_info in self.bombs_danger.items():
             power = bomb_info.get('power', 4)
             self.map_matrix[bomb_pos[0]][bomb_pos[1]] = InvalidPos.BOMB.value
@@ -518,7 +529,10 @@ class GameMap:
     def fill_opp_danger_zones(self, tmp_matrix=None):
         power = min(self.opp_bot.power, 4)
         tmp = copy.deepcopy(valid_pos_set)
+        tmp.add(InvalidPos.TEMP.value)
+        tmp.add(InvalidPos.BOMB.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
+        tmp.add(InvalidPos.TELE_GATE.value)
         for direction in attack_directions:
             for i in range(1, power + 1):
                 attack = i * direction
@@ -1329,16 +1343,19 @@ def map_state(data):
     game_map.fill_map()
     player_speed = game_map.my_bot.speed  # update player speed
 
+    # print(f'{game_map.id} ** {game_map.map_matrix}')
+
     player_id = game_map.player_id
     game_tag = game_map.tag
     my_pos = game_map.my_bot.pos
 
     if game_tag == 'bomb:explosed':
         time_explosed_bomb = 233
-        for bomb_pos, bomb_info in game_map.bombs_danger.items():
-            if bomb_info['remain_time'] < 250:
-                if game_map.heuristic_func(my_pos, bomb_pos) < 7:
-                    next_moves('x')
+        # for bomb_pos, bomb_info in game_map.bombs_danger.items():
+        #     if bomb_info['remain_time'] < 250:
+        #         if game_map.heuristic_func(my_pos, bomb_pos) < 5:
+        #             if my_pos[0] != bomb_pos[0] and my_pos[1] != bomb_pos[1]:
+        #                 next_moves('x')
     else:
         time_explosed_bomb = 0
 
@@ -1346,17 +1363,6 @@ def map_state(data):
         normal_queue = []
     elif game_tag == 'player:back-to-playground' and (player_id and player_id in GameInfo.PLAYER_ID):
         normal_queue = []
-
-    if len(normal_queue) > 0:
-        next_move = normal_queue.pop()
-        direction = next_move[1][0]
-        if len(direction) > 0:
-            if next_move[1][3] == 13 or next_move[1][3] == 5:
-                bomb_timestamp = game_map.timestamp
-            # print(f'My pos: {my_pos} ** {next_move}')
-            if len(direction) > 4:
-                direction = direction[:5]
-            next_moves(direction)
 
     normal_routes = PriorityQueue()
     in_bomb = game_map.in_opp_bomb_zones()
@@ -1382,6 +1388,17 @@ def map_state(data):
         #     if not (game_tag == 'player:pick-spoil' and (player_id and player_id not in GameInfo.PLAYER_ID)):
         if move:
             drive_bot(game_map, normal_routes)
+
+    if len(normal_queue) > 0:
+        next_move = normal_queue.pop()
+        direction = next_move[1][0]
+        if len(direction) > 0:
+            if next_move[1][3] == 13 or next_move[1][3] == 5:
+                bomb_timestamp = game_map.timestamp
+            # print(f'My pos: {my_pos} ** {next_move}')
+            # if len(direction) > 3:
+            #     direction = direction[:4]
+            next_moves(direction)
 
 
 def drive_bot(game_map, normal_routes):
@@ -1416,7 +1433,7 @@ def drive_bot(game_map, normal_routes):
         if game_map.opp_bot.pos == opp_pos:
             count_opp += 1
         counter += 1
-        if count_opp == 10 or counter == 10:
+        if count_opp == 7 or counter == 7:
             free_route = free_bfs(game_map)
             if len(free_route) > 0:
                 my_route = free_route[1]
