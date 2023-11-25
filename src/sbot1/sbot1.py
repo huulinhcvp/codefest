@@ -1166,9 +1166,12 @@ def attack_mode_v1(game_map):
         if pos and len(poses) <= 13:
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
             if len(place_bombs) > 2 and len(next_poses) > 1:
-                routes.extend(place_bombs)
-                poses.extend(next_poses)
-                normal_routes.put((score, (score, routes, poses, 13)))
+                if len(routes) == 0:
+                    routes.extend(place_bombs)
+                    poses.extend(next_poses)
+                    normal_routes.put((score, (score, routes, poses, 13)))
+                else:
+                    normal_routes.put((score, (score, routes, poses, -1)))
     return normal_routes
 
 
@@ -1197,9 +1200,9 @@ def finding_path(game_map):
                         routes.extend(place_bombs)
                         poses.extend(next_poses)
                         normal_routes.put((score - game_map.bomb_targets[pos] - 7, (score, routes, poses, 13)))
-                        break
                     else:
                         normal_routes.put((score - game_map.bomb_targets[pos], (score, routes, poses, -1)))
+                    break
 
         # Move to 4 directions next to current position.
         next_routes = []  # Save all routes along with related information.
