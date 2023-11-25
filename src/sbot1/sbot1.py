@@ -21,10 +21,12 @@ sio = socketio.Client()
 map_states = []
 counter = 0
 count_opp = 0
-can_move = False
 opp_pos = None
 normal_queue = []
 saved_routes = dict()
+delay_time = 320
+player_speed = 320
+time_explosed_bomb = 0
 previous_pos = None
 previous_timestamp = 0
 max_time = 0
@@ -242,6 +244,8 @@ class GameMap:
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
                     if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
                         continue
+                    elif row == self.opp_bot.egg[0] and col == self.opp_bot.egg[1]:
+                        num_balk += 3
                     else:
                         num_balk += 1
                 elif self.map_matrix[row][col] == 1:
@@ -268,7 +272,7 @@ class GameMap:
         saved = set()
         saved.add(cur_pos)
         move_queue = deque()
-        move_queue.append([cur_pos, deque(), deque(), 0])
+        move_queue.append([cur_pos, [], [], 0])
 
         while len(move_queue) > 0:
             pos, routes, poses, score = move_queue.popleft()
@@ -298,7 +302,7 @@ class GameMap:
                 p.append(move[0])
                 move_queue.append([move[0], r, p, move[1]])
 
-        return cur_pos, deque(), deque(), 0
+        return cur_pos, [], [], 0
 
     def can_attack(self, pos):
         power = min(self.my_bot.power, 4)
@@ -459,10 +463,11 @@ class GameMap:
                     'power': bomb_power,
                     'remain_time': remain_time
                 }
-            self.bombs[bomb_pos] = {
-                'power': bomb_power,
-                'remain_time': remain_time
-            }
+            else:
+                self.bombs[bomb_pos] = {
+                    'power': bomb_power,
+                    'remain_time': remain_time
+                }
             list_bombs[bomb_pos] = {
                 'player_id': player_id,
                 'power': bomb_power,
@@ -474,7 +479,7 @@ class GameMap:
 
         for old_bomb_pos, old_bomb_value in tmp_bombs.items():
             old_timestamp = old_bomb_value['timestamp']
-            if self.timestamp - old_timestamp <= 1200:
+            if self.timestamp - old_timestamp <= 800:
                 self.bombs_danger[old_bomb_pos] = {
                     'power': old_bomb_value['power'],
                     'remain_time': 0
@@ -582,7 +587,51 @@ class GameMap:
 
     def in_opp_bomb_zones(self):
         for bomb_pos, bomb_info in self.bombs_danger.items():
-            power = 4
+            power = bomb_info.get('power', 4)
+            delta_row = self.my_bot.pos[0] - bomb_pos[0]
+            delta_col = self.my_bot.pos[1] - bomb_pos[1]
+
+            if delta_row == 0:
+                if abs(delta_col) <= power:
+                    if delta_col == 0:
+                        return True
+                    elif delta_col < 0:
+                        for i in range(1, abs(delta_col)):
+                            new_col = self.my_bot.pos[1] + i
+                            if self.map_matrix[self.my_bot.pos[0]][new_col] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+                    else:
+                        for i in range(1, delta_col):
+                            new_col = self.my_bot.pos[1] - i
+                            if self.map_matrix[self.my_bot.pos[0]][new_col] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+            elif delta_col == 0:
+                if abs(delta_row) <= power:
+                    if delta_row == 0:
+                        return True
+                    elif delta_row < 0:
+                        for i in range(1, abs(delta_row)):
+                            new_row = self.my_bot.pos[0] + i
+                            if self.map_matrix[new_row][self.my_bot.pos[1]] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+                    else:
+                        for i in range(1, delta_row):
+                            new_row = self.my_bot.pos[0] - i
+                            if self.map_matrix[new_row][self.my_bot.pos[1]] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+        return False
+
+    def in_stopped_by_server(self):
+        for bomb_pos, bomb_info in self.bombs.items():
+            power = bomb_info.get('power', 4)
             delta_row = self.my_bot.pos[0] - bomb_pos[0]
             delta_col = self.my_bot.pos[1] - bomb_pos[1]
 
@@ -732,8 +781,7 @@ class GameMap:
             # if count == 2:
             #     self._fill_my_danger_zones(cur_pos, power, tmp_matrix)
             pos, routes, poses, score = move_queue.popleft()
-            if len(poses) >= 13:
-                break
+
             # Move to 4 directions next to current position.
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
                 delta = self.heuristic_func(pos, cur_pos, -1)
@@ -846,6 +894,7 @@ class GameMap:
             # if count == 2:
             #     self._fill_my_danger_zones(cur_pos, power, tmp_matrix)
             pos, routes, poses, score = move_queue.popleft()
+
             # Move to 4 directions next to current position.
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
                 delta1 = self.heuristic_func(pos, cur_pos, -1)
@@ -941,7 +990,7 @@ class GameMap:
         saved = set()
         saved.add(cur_pos)
         move_queue = deque()
-        move_queue.append([cur_pos, deque(), deque(), 0])
+        move_queue.append([cur_pos, [], [], 0])
 
         # count = 1
         tmp_matrix = np.array(self.map_matrix)
@@ -1002,7 +1051,7 @@ class GameMap:
         elif len(unsafe_routes) > 0:
             return unsafe_routes.pop()
 
-        return deque(), deque(), 0
+        return [], [], 0
 
     def greedy_place_bombs(self, cur_pos, bombs_power=0, attack=False, is_setup=False):
         """Return next_move is 'b' if my bot can place a bomb."""
@@ -1112,11 +1161,11 @@ def free_bfs(game_map):
 def attack_mode_v1(game_map):
     normal_routes = PriorityQueue()
     delta = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.pos, -1)
-    if delta <= 5:
+    if delta <= 7:
         pos, routes, poses, score = game_map.is_connected_to_opp()
         if pos and len(poses) <= 13:
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
-            if len(place_bombs) > 0 and len(next_poses) > 0:
+            if len(place_bombs) > 2 and len(next_poses) > 1:
                 routes.extend(place_bombs)
                 poses.extend(next_poses)
                 normal_routes.put((score, (score, routes, poses, 13)))
@@ -1144,10 +1193,13 @@ def finding_path(game_map):
             if not game_map.near_spoil(pos):
                 _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, game_map.bomb_targets[pos])
                 if len(place_bombs) >= 3 and 2 <= len(next_poses):
-                    routes.extend(place_bombs)
-                    poses.extend(next_poses)
-                    normal_routes.put((score - game_map.bomb_targets[pos] - 7, (score, routes, poses, 13)))
-                    break
+                    if len(routes) == 0:
+                        routes.extend(place_bombs)
+                        poses.extend(next_poses)
+                        normal_routes.put((score - game_map.bomb_targets[pos] - 7, (score, routes, poses, 13)))
+                        break
+                    else:
+                        normal_routes.put((score - game_map.bomb_targets[pos], (score, routes, poses, -1)))
 
         # Move to 4 directions next to current position.
         next_routes = []  # Save all routes along with related information.
@@ -1202,6 +1254,23 @@ def finding_path(game_map):
     return normal_routes
 
 
+def can_move():
+    global previous_timestamp
+    global delay_time
+    global time_explosed_bomb
+    tmp = delay_time + time_explosed_bomb
+    if tmp > 448:
+        tmp = 448
+    if tmp < 301 and tmp != 10:
+        tmp = 301
+    current_time = int(time.time() * 1000)
+    delta = current_time - previous_timestamp
+    if delta > tmp:
+        previous_timestamp = current_time
+        return True
+    return False
+
+
 @sio.event
 def send_infor():
     infor = {"game_id": GameInfo.GAME_ID, "player_id": GameInfo.PLAYER_ID}
@@ -1216,8 +1285,16 @@ def join_game(data):
 
 @sio.on('drive player')
 def receive_moves(data):
-    global can_move
-    can_move = True
+    global delay_time
+    player_id = data.get('player_id', 'Hello world!')
+    direction = data.get('direction', 'n')
+    if player_id and player_id in GameInfo.PLAYER_ID:
+        print(f'Directions sent: {direction}')
+        if 'x' in direction:
+            delay_time = 10
+        else:
+            n = len(direction)
+            delay_time = n * player_speed
 
 
 @sio.event
@@ -1236,48 +1313,48 @@ def map_state(data):
     global count_opp
     global opp_pos
     global counter
-    global can_move
     global normal_queue
     global bomb_timestamp
-    global previous_timestamp
+    global time_explosed_bomb
     global previous_pos
+    global player_speed
 
     map_states.append(data)
     cur_map = map_states.pop()
     game_map = GameMap(cur_map)
     game_map.find_bots()
     game_map.fill_map()
+    player_speed = game_map.my_bot.speed  # update player speed
 
     player_id = game_map.player_id
     game_tag = game_map.tag
     my_pos = game_map.my_bot.pos
+
+    if game_tag == 'bomb:explosed':
+        time_explosed_bomb = 233
+    else:
+        time_explosed_bomb = 0
 
     if game_tag == 'player:be-isolated' and (player_id and player_id in GameInfo.PLAYER_ID):
         normal_queue = []
     elif game_tag == 'player:back-to-playground' and (player_id and player_id in GameInfo.PLAYER_ID):
         normal_queue = []
 
-    # elif game_tag == 'bomb:setup' and player_id == GameInfo.PLAYER_ID:
-    #     bomb_timestamp = game_map.timestamp  # update bomb timestamp
-
     if len(normal_queue) > 0:
         next_move = normal_queue.pop()
-        start_pos = next_move[1][1]
-        if not previous_pos or start_pos != previous_pos:
-            previous_pos = copy.deepcopy(start_pos)
+        direction = next_move[1][0]
+        if len(direction) > 0:
             if next_move[1][3] == 13 or next_move[1][3] == 5:
                 bomb_timestamp = game_map.timestamp
-            if len(next_move[1][0]) > 0:
-                next_moves(next_move[1][0])
-                previous_timestamp = game_map.timestamp
-                can_move = False
-    else:
-        previous_pos = None
-        # previous_timestamp = 0
+            # print(f'My pos: {my_pos} ** {next_move}')
+            next_moves(direction)
 
     normal_routes = PriorityQueue()
     in_bomb = game_map.in_opp_bomb_zones()
-    if in_bomb:
+    is_stopped = game_map.in_stopped_by_server()
+    if in_bomb or (
+            is_stopped and ((game_tag == 'player:stop-moving' or game_tag == 'player:moving-banned') and (
+            player_id and player_id in GameInfo.PLAYER_ID))):
         place_bombs, next_poses, _ = game_map.finding_safe_zones_v3(game_map.my_bot.pos)
         if len(place_bombs) > 0:
             normal_routes.put((-1, (-1, place_bombs, next_poses, -1)))
@@ -1290,13 +1367,12 @@ def map_state(data):
             count_opp = 0
             counter = 0
     elif normal_routes.empty():
-        if player_id and player_id not in GameInfo.PLAYER_ID and can_move or (
-                game_map.timestamp - previous_timestamp) >= 400:
-            if not previous_pos or 'bomb:setup' in game_tag:
-                drive_bot(game_map, normal_routes)
-            else:
-                if my_pos != previous_pos:
-                    drive_bot(game_map, normal_routes)
+        move = can_move()
+        # print(f'{game_map.id} ** Can move: {move}')
+        # if not (game_tag == 'player:start-moving' and (player_id and player_id in GameInfo.PLAYER_ID)):
+        #     if not (game_tag == 'player:pick-spoil' and (player_id and player_id not in GameInfo.PLAYER_ID)):
+        if move:
+            drive_bot(game_map, normal_routes)
 
 
 def drive_bot(game_map, normal_routes):
@@ -1331,7 +1407,7 @@ def drive_bot(game_map, normal_routes):
         if game_map.opp_bot.pos == opp_pos:
             count_opp += 1
         counter += 1
-        if count_opp == 7 or counter == 7:
+        if count_opp == 10 or counter == 10:
             free_route = free_bfs(game_map)
             if len(free_route) > 0:
                 my_route = free_route[1]
