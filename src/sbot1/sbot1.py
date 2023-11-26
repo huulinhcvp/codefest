@@ -243,8 +243,8 @@ class GameMap:
                 if self.map_matrix[row][col] in tmp:
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
-                    if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
-                        continue
+                    # if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
+                    #     continue
                     if row == self.opp_bot.egg[0] and col == self.opp_bot.egg[1]:
                         num_balk += 5
                     else:
@@ -757,7 +757,7 @@ class GameMap:
         self._fill_bombs(self.map_info['bombs'])
         self._fill_bomb_danger_zones()
         self._fill_spoils(self.map_info['spoils'])
-        self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = ValidPos.BALK.value
+        # self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = ValidPos.BALK.value
         self._fill_eggs()
         interval = self.timestamp - bomb_timestamp
         if interval >= self.my_bot.delay:
@@ -794,9 +794,11 @@ class GameMap:
         tmp_matrix = np.array(self.map_matrix)
 
         checker = False
-        if cur_pos == self.opp_bot.egg:
-            checker = True
-            self.bomb_targets = {cur_pos: 5}
+        bias = self.heuristic_func(cur_pos, self.opp_bot.egg, -1)
+        if bias <= power:
+            if cur_pos[0] == self.opp_bot.egg[0] or cur_pos[1] == self.opp_bot.egg[1]:
+                checker = True
+                self.bomb_targets = {cur_pos: 5}
 
         while len(move_queue) > 0:
             # if count == 2:
@@ -1200,7 +1202,7 @@ def attack_mode_v1(game_map):
     delta = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.pos, -1)
     if delta <= 7:
         pos, routes, poses, score = game_map.is_connected_to_opp()
-        if pos and len(poses) <= 5:
+        if pos and len(poses) <= 3:
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
             if len(place_bombs) > 2 and len(next_poses) > 1:
                 if len(routes) == 0:
