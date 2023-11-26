@@ -689,6 +689,8 @@ class GameMap:
 
     def _retrieve_all_targets(self):
         roads = list(zip(*np.where(self.map_matrix == 0)))
+        egg_mystic = list(zip(*np.where(self.map_matrix == 9)))
+        roads.extend(egg_mystic)
         return roads
 
     def _retrieve_all_telegate(self):
