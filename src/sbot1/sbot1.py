@@ -243,8 +243,8 @@ class GameMap:
                 if self.map_matrix[row][col] in tmp:
                     continue
                 if self.map_matrix[row][col] == ValidPos.BALK.value:
-                    # if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
-                    #     num_balk += 1
+                    if row == self.opp_bot.pos[0] and col == self.opp_bot.pos[1]:
+                        continue
                     if row == self.opp_bot.egg[0] and col == self.opp_bot.egg[1]:
                         num_balk += 5
                     else:
@@ -791,11 +791,17 @@ class GameMap:
         # count = 1
         tmp_matrix = np.array(self.map_matrix)
 
+        checker = False
+        if cur_pos == self.opp_bot.egg:
+            checker = True
+            self.bomb_targets = {cur_pos: 5}
+
         while len(move_queue) > 0:
             # if count == 2:
             #     self._fill_my_danger_zones(cur_pos, power, tmp_matrix)
             pos, routes, poses, score = move_queue.popleft()
-
+            if len(poses) >= 7:
+                break
             # Move to 4 directions next to current position.
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
                 if pos in self.targets.keys():
@@ -830,9 +836,13 @@ class GameMap:
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                         if not safe_routes:
                             safe_routes = routes, poses, score
+                            if checker:
+                                break
                     else:
                         if power + 1 <= score:
                             unsafe_routes.appendleft((routes, poses, score))
+                            if checker:
+                                break
 
             next_routes = []  # Save all routes along with related information.
             for route, direction in directions.items():
@@ -907,6 +917,9 @@ class GameMap:
             # if count == 2:
             #     self._fill_my_danger_zones(cur_pos, power, tmp_matrix)
             pos, routes, poses, score = move_queue.popleft()
+
+            if len(poses) >= 7:
+                break
 
             # Move to 4 directions next to current position.
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
@@ -1016,6 +1029,9 @@ class GameMap:
         while len(move_queue) > 0:
             pos, routes, poses, score = move_queue.popleft()
             # Move to 4 directions next to current position.
+            if len(poses) >= 7:
+                break
+
             if tmp_matrix[pos[0]][pos[1]] in tmp:
                 # delta2 = self.heuristic_func(pos, self.opp_bot.pos, -1)
                 if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
