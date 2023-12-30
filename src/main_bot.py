@@ -422,21 +422,23 @@ class GameMap:
         opp_egg_pos = self.opp_bot.egg
         if opp_egg_pos:
             self.map_matrix[opp_egg_pos[0]][opp_egg_pos[1]] = ValidPos.BALK.value  # need to attack
-        self.map_matrix[my_egg_pos[0]][my_egg_pos[1]] = InvalidPos.WALL.value
+        if my_egg_pos:
+            self.map_matrix[my_egg_pos[0]][my_egg_pos[1]] = InvalidPos.WALL.value
         for direction in egg_directions:
-            for i in range(1, 3):
-                attack = i * direction
-                row = my_egg_pos[0] + attack[0]
-                col = my_egg_pos[1] + attack[1]
-                if row < 0 or row >= self.max_row or col < 0 or col >= self.max_col:
-                    continue
-                if self.map_matrix[row][col] in valid_pos_set:
-                    continue
-                if self.map_matrix[row][col] == Spoil.EGG_MYSTIC.value:
-                    self.map_matrix[row][col] = ValidPos.ROAD.value
-                if self.map_matrix[row][col] == ValidPos.BALK.value:
-                    # Please do not place bombs to explode in the vicinity of your eggs.
-                    self.map_matrix[row][col] = InvalidPos.WALL.value  # 1
+            if my_egg_pos:
+                for i in range(1, 3):
+                    attack = i * direction
+                    row = my_egg_pos[0] + attack[0]
+                    col = my_egg_pos[1] + attack[1]
+                    if row < 0 or row >= self.max_row or col < 0 or col >= self.max_col:
+                        continue
+                    if self.map_matrix[row][col] in valid_pos_set:
+                        continue
+                    if self.map_matrix[row][col] == Spoil.EGG_MYSTIC.value:
+                        self.map_matrix[row][col] = ValidPos.ROAD.value
+                    if self.map_matrix[row][col] == ValidPos.BALK.value:
+                        # Please do not place bombs to explode in the vicinity of your eggs.
+                        self.map_matrix[row][col] = InvalidPos.WALL.value  # 1
             if opp_egg_pos:
                 for i in range(1, 4):
                     attack = i * direction
@@ -449,18 +451,19 @@ class GameMap:
                     if self.map_matrix[opp_row][opp_col] == Spoil.EGG_MYSTIC.value:
                         self.map_matrix[opp_row][opp_col] = ValidPos.ROAD.value
 
-        for attack in new_my_directions:
-            row = my_egg_pos[0] + attack[0]
-            col = my_egg_pos[1] + attack[1]
-            if row < 0 or row >= self.max_row or col < 0 or col >= self.max_col:
-                continue
-            if self.map_matrix[row][col] in valid_pos_set:
-                continue
-            if self.map_matrix[row][col] == Spoil.EGG_MYSTIC.value:
-                self.map_matrix[row][col] = ValidPos.ROAD.value
-            if self.map_matrix[row][col] == ValidPos.BALK.value:
-                # Please do not place bombs to explode in the vicinity of your eggs.
-                self.map_matrix[row][col] = InvalidPos.WALL.value  # 1
+        if my_egg_pos:
+            for attack in new_my_directions:
+                row = my_egg_pos[0] + attack[0]
+                col = my_egg_pos[1] + attack[1]
+                if row < 0 or row >= self.max_row or col < 0 or col >= self.max_col:
+                    continue
+                if self.map_matrix[row][col] in valid_pos_set:
+                    continue
+                if self.map_matrix[row][col] == Spoil.EGG_MYSTIC.value:
+                    self.map_matrix[row][col] = ValidPos.ROAD.value
+                if self.map_matrix[row][col] == ValidPos.BALK.value:
+                    # Please do not place bombs to explode in the vicinity of your eggs.
+                    self.map_matrix[row][col] = InvalidPos.WALL.value  # 1
         if opp_egg_pos:
             for attack in new_opp_directions:
                 opp_row = opp_egg_pos[0] + attack[0]
