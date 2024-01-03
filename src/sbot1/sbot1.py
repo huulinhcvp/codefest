@@ -1147,8 +1147,10 @@ class GameMap:
         move_queue.append([cur_pos, [], [], 0])
 
         tmp = copy.deepcopy(valid_pos_set)
+        tmp1 = copy.deepcopy(valid_pos_set)
         # tmp.add(InvalidPos.TEMP.value)
         tmp.add(Spoil.EGG_MYSTIC.value)
+        tmp1.add(Spoil.EGG_MYSTIC.value)
         if move_tele:
             # tmp.add(InvalidPos.TELE_GATE.value)
             tmp.add(InvalidPos.TEMP.value)
@@ -1162,7 +1164,7 @@ class GameMap:
             if len(poses) >= 7:
                 break
 
-            if tmp_matrix[pos[0]][pos[1]] in tmp:
+            if tmp_matrix[pos[0]][pos[1]] in tmp1:
                 # delta2 = self.heuristic_func(pos, self.opp_bot.pos, -1)
                 if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
                     # and pos[0] != self.opp_bot.pos[0] and pos[1] != \self.opp_bot.pos[1]:
