@@ -27,7 +27,7 @@ normal_queue = []
 saved_routes = dict()
 delay_time = 540
 player_speed = 480
-time_explosed_bomb = 0
+time_explored_bomb = 0
 previous_pos = None
 previous_timestamp = 0
 max_time = 0
@@ -1448,8 +1448,8 @@ def finding_path(game_map, move_temp=False):
 def can_move():
     global previous_timestamp
     global delay_time
-    global time_explosed_bomb
-    tmp = delay_time + time_explosed_bomb
+    global time_explored_bomb
+    tmp = delay_time + time_explored_bomb
     if tmp > 540:
         tmp = 540
     if tmp < 480 and tmp != 10:
@@ -1506,19 +1506,15 @@ def map_state(data):
     global counter
     global normal_queue
     global bomb_timestamp
-    global time_explosed_bomb
+    global time_explored_bomb
     global previous_pos
     global player_speed
-
-    # player_id_tmp = data.get('player_id')
-    # if player_id_tmp and player_id_tmp in GameInfo.PLAYER_ID:
-    #     print(f'Timestamp: {data["timestamp"]} ** {data["id"]} ** {data["tag"]}')
 
     map_states.append(data)
     cur_map = map_states.pop()
     game_map = GameMap(cur_map)
-    print(f'GST Dragon: {game_map.map_info.get("gstDragon")}')
-    print(f'Fire Ball: {game_map.map_info.get("fireBall")}')
+    # print(f'GST Dragon: {game_map.map_info.get("gstDragon")}')
+    # print(f'Fire Ball: {game_map.map_info.get("fireBall")}')
     game_map.find_bots()
     game_map.fill_map()
     player_speed = game_map.my_bot.speed  # update player speed
@@ -1530,14 +1526,9 @@ def map_state(data):
     my_pos = game_map.my_bot.pos
 
     if game_tag == 'bomb:explosed':
-        time_explosed_bomb = 113
-        # for bomb_pos, bomb_info in game_map.bombs_danger.items():
-        #     if bomb_info['remain_time'] < 250:
-        #         if game_map.heuristic_func(my_pos, bomb_pos) < 5:
-        #             if my_pos[0] != bomb_pos[0] and my_pos[1] != bomb_pos[1]:
-        #                 next_moves('x')
+        time_explored_bomb = 113
     else:
-        time_explosed_bomb = 0
+        time_explored_bomb = 0
 
     if game_tag == 'player:be-isolated' and (player_id and player_id in GameInfo.PLAYER_ID):
         normal_queue = []
