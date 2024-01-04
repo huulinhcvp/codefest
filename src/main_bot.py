@@ -1236,7 +1236,7 @@ class GameMap:
                 delta2 = self.heuristic_func(pos, self.opp_bot.pos, -1)
                 if pos in self.targets.keys():
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
-                            self.opp_bot.pos[1]:
+                            self.opp_bot.pos[1] and delta2 > 2:
                         if score < 7:
                             perfected_routes.append((routes, poses, score))
                             break
@@ -1247,7 +1247,7 @@ class GameMap:
                 elif pos in self.bomb_targets.keys():
                     if self.bomb_targets[pos] < 4:
                         if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
-                                self.opp_bot.pos[1]:
+                                self.opp_bot.pos[1] and delta2 > 2:
                             if score < 7:
                                 perfected_routes.append((routes, poses, score))
                                 break
@@ -1257,7 +1257,7 @@ class GameMap:
                                 break
                 else:
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
-                            self.opp_bot.pos[1]:
+                            self.opp_bot.pos[1] and delta2 > 2:
                         safe_routes.append((routes, poses, score))
                         break
                     else:
@@ -1349,16 +1349,20 @@ class GameMap:
                 break
 
             if tmp_matrix[pos[0]][pos[1]] in tmp1:
-                # delta2 = self.heuristic_func(pos, self.opp_bot.pos, -1)
-                if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
-                    # and pos[0] != self.opp_bot.pos[0] and pos[1] != \self.opp_bot.pos[1]:
+                if move_tele and tmp_matrix[pos[0]][pos[1]] == InvalidPos.TELE_GATE.value:
                     safe_routes.append((routes, poses, score))
                     break
                 else:
-                    unsafe_routes.append((routes, poses, score))
-                    # if delta2 > 5 and
-                    if score > 3:
+                    # delta2 = self.heuristic_func(pos, self.opp_bot.pos, -1)
+                    if pos[0] != cur_pos[0] and pos[1] != cur_pos[1]:
+                        # and pos[0] != self.opp_bot.pos[0] and pos[1] != \self.opp_bot.pos[1]:
+                        safe_routes.append((routes, poses, score))
                         break
+                    else:
+                        unsafe_routes.append((routes, poses, score))
+                        # # if delta2 > 5 and
+                        if score > 2:
+                            break
 
             next_routes = []  # Save all routes along with related information.
             for route, direction in directions.items():
@@ -1373,18 +1377,21 @@ class GameMap:
                 #     continue
                 # valid positions
                 if tmp_matrix[next_pos[0]][next_pos[1]] in tmp:
-                    min_score = 1000000
-                    saved.add(next_pos)
-                    if 0 <= neighbor_pos[0] < self.max_row and 0 <= neighbor_pos[1] < self.max_col:
-                        # if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
-                        #     if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
-                        #         min_score += 1000000
-                        #     elif tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
-                        #         min_score += 1500000
-                        if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
-                            min_score += 2000000
-                    min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
-                    next_routes.append([next_pos, score + 1, score + min_score, route.value])
+                    if move_tele and tmp_matrix[next_pos[0]][next_pos[1]] == InvalidPos.TELE_GATE.value:
+                        next_routes.append([next_pos, score + 1, score - 3000000, route.value])
+                    else:
+                        min_score = 1000000
+                        saved.add(next_pos)
+                        if 0 <= neighbor_pos[0] < self.max_row and 0 <= neighbor_pos[1] < self.max_col:
+                            # if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
+                            #     if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
+                            #         min_score += 1000000
+                            #     elif tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
+                            #         min_score += 1500000
+                            if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
+                                min_score += 2000000
+                        min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
+                        next_routes.append([next_pos, score + 1, score + min_score, route.value])
 
             next_routes.sort(key=lambda x: x[2])
             for move in next_routes:
@@ -1791,7 +1798,8 @@ def map_state(data):
             count_opp = 0
             counter = 0
         else:
-            place_bombs, next_poses, _ = game_map.finding_safe_zones_v3(game_map.my_bot.pos, move_tele=False, move_tmp=True)
+            place_bombs, next_poses, _ = game_map.finding_safe_zones_v3(game_map.my_bot.pos, move_tele=False,
+                                                                        move_tmp=True)
             if len(place_bombs) > 0:
                 normal_routes.put((-1, (-1, place_bombs, next_poses, -1)))
             if not normal_routes.empty():
@@ -1803,7 +1811,8 @@ def map_state(data):
                 count_opp = 0
                 counter = 0
             else:
-                place_bombs, next_poses, _ = game_map.finding_safe_zones_v3(game_map.my_bot.pos, move_tele=True, move_tmp=True)
+                place_bombs, next_poses, _ = game_map.finding_safe_zones_v3(game_map.my_bot.pos, move_tele=True,
+                                                                            move_tmp=True)
                 if len(place_bombs) > 0:
                     normal_routes.put((-1, (-1, place_bombs, next_poses, -1)))
                 if not normal_routes.empty():
