@@ -525,7 +525,7 @@ class GameMap:
                 return True
         return False
 
-    def _fill_dragon(self, map_dragons):
+    def _fill_dragon(self):
         opp_dragons = self.opp_bot.dragon
         if opp_dragons:
             row = opp_dragons['pos'][0]
@@ -921,6 +921,88 @@ class GameMap:
                                 break
                             else:
                                 return True
+        for bomb_pos, bomb_info in self.bombs_danger.items():
+            power = bomb_info.get('power', 4)
+            delta_row = self.my_bot.pos[0] - bomb_pos[0]
+            delta_col = self.my_bot.pos[1] - bomb_pos[1]
+
+            if delta_row == 0:
+                if abs(delta_col) <= power:
+                    if delta_col == 0:
+                        return True
+                    elif delta_col < 0:
+                        for i in range(1, abs(delta_col)):
+                            new_col = self.my_bot.pos[1] + i
+                            if self.map_matrix[self.my_bot.pos[0]][new_col] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+                    else:
+                        for i in range(1, delta_col):
+                            new_col = self.my_bot.pos[1] - i
+                            if self.map_matrix[self.my_bot.pos[0]][new_col] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+            elif delta_col == 0:
+                if abs(delta_row) <= power:
+                    if delta_row == 0:
+                        return True
+                    elif delta_row < 0:
+                        for i in range(1, abs(delta_row)):
+                            new_row = self.my_bot.pos[0] + i
+                            if self.map_matrix[new_row][self.my_bot.pos[1]] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+                    else:
+                        for i in range(1, delta_row):
+                            new_row = self.my_bot.pos[0] - i
+                            if self.map_matrix[new_row][self.my_bot.pos[1]] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+        for bomb_pos, bomb_info in self.bombs_restrict.items():
+            power = bomb_info.get('power', 4)
+            delta_row = self.my_bot.pos[0] - bomb_pos[0]
+            delta_col = self.my_bot.pos[1] - bomb_pos[1]
+
+            if delta_row == 0:
+                if abs(delta_col) <= power:
+                    if delta_col == 0:
+                        return True
+                    elif delta_col < 0:
+                        for i in range(1, abs(delta_col)):
+                            new_col = self.my_bot.pos[1] + i
+                            if self.map_matrix[self.my_bot.pos[0]][new_col] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+                    else:
+                        for i in range(1, delta_col):
+                            new_col = self.my_bot.pos[1] - i
+                            if self.map_matrix[self.my_bot.pos[0]][new_col] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+            elif delta_col == 0:
+                if abs(delta_row) <= power:
+                    if delta_row == 0:
+                        return True
+                    elif delta_row < 0:
+                        for i in range(1, abs(delta_row)):
+                            new_row = self.my_bot.pos[0] + i
+                            if self.map_matrix[new_row][self.my_bot.pos[1]] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
+                    else:
+                        for i in range(1, delta_row):
+                            new_row = self.my_bot.pos[0] - i
+                            if self.map_matrix[new_row][self.my_bot.pos[1]] in {1, 2, 5}:
+                                break
+                            else:
+                                return True
         return False
 
     def in_stopped_by_server(self):
@@ -1048,7 +1130,7 @@ class GameMap:
         self._fill_bomb_danger_zones()
         self._fill_bomb_restrict_zones()
         self._fill_spoils(self.map_info['spoils'])
-        self._fill_dragon(self.map_info.get('gstDragon'))
+        self._fill_dragon()
         # self.map_matrix[self.opp_bot.pos[0]][self.opp_bot.pos[1]] = ValidPos.BALK.value
         self._fill_eggs()
         interval = self.timestamp - bomb_timestamp
@@ -1208,7 +1290,7 @@ class GameMap:
 
         return deque(), deque(), 0
 
-    def finding_safe_zones(self, cur_pos):
+    def finding_safe_zones(self, cur_pos, attack_dragon=False):
         power = min(self.my_bot.power, 4)
         unsafe_routes = deque()
         safe_routes = deque()
@@ -1234,34 +1316,37 @@ class GameMap:
             # Move to 4 directions next to current position.
             if tmp_matrix[pos[0]][pos[1]] in valid_pos_set:
                 delta2 = self.heuristic_func(pos, self.opp_bot.pos, -1)
+                delta3 = 1000
+                if attack_dragon:
+                    delta3 = self.heuristic_func(pos, self.opp_bot.dragon['pos'], -1)
                 if pos in self.targets.keys():
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
-                            self.opp_bot.pos[1] and delta2 > 2:
+                            self.opp_bot.pos[1] and delta2 > 2 and delta3 > 3:
                         if score < 7:
                             perfected_routes.append((routes, poses, score))
                             break
                     else:
-                        if power + 1 <= score < power + 3 and delta2 > 5:
+                        if power + 1 <= score < power + 3 and delta2 > 5 and delta3 > 3:
                             greedy_routes.append((routes, poses, score))
                             break
                 elif pos in self.bomb_targets.keys():
                     if self.bomb_targets[pos] < 4:
                         if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
-                                self.opp_bot.pos[1] and delta2 > 2:
+                                self.opp_bot.pos[1] and delta2 > 2 and delta3 > 3:
                             if score < 7:
                                 perfected_routes.append((routes, poses, score))
                                 break
                         else:
-                            if power + 1 <= score < power + 3 and delta2 > 5:
+                            if power + 1 <= score < power + 3 and delta2 > 5 and delta3 > 3:
                                 greedy_routes.appendleft((routes, poses, score))
                                 break
                 else:
                     if pos[0] != cur_pos[0] and pos[1] != cur_pos[1] and pos[0] != self.opp_bot.pos[0] and pos[1] != \
-                            self.opp_bot.pos[1] and delta2 > 2:
+                            self.opp_bot.pos[1] and delta2 > 2 and delta3 > 3:
                         safe_routes.append((routes, poses, score))
                         break
                     else:
-                        if power + 1 <= score < power + 3 and delta2 > 5:
+                        if power + 1 <= score < power + 3 and delta2 > 5 and delta3 > 3:
                             unsafe_routes.append((routes, poses, score))
                             break
 
@@ -1529,7 +1614,14 @@ def attack_mode_v1(game_map):
     delta_dragon = 1000
     if game_map.opp_bot.dragon:
         delta_dragon = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.dragon['pos'])
-    timing = 15 - 2 * (game_map.remain_time // 60)
+    timing = 7
+    if 60 <= game_map.remain_time < 120:
+        timing = 5
+    elif 45 <= game_map.remain_time < 60:
+        timing = 13
+    elif game_map.remain_time < 45:
+        timing = 23
+    # timing = 15 - 2 * (game_map.remain_time // 60)
     if delta_opp <= 7:
         pos, routes, poses, score = game_map.is_connected_to_opp()
         if pos and len(poses) <= 3:
