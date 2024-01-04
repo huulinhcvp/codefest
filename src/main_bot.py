@@ -1783,9 +1783,10 @@ def map_state(data):
     normal_routes = PriorityQueue()
     in_bomb = game_map.in_opp_bomb_zones()
     is_stopped = game_map.in_stopped_by_server()
-    if in_bomb or (
-            is_stopped and ((game_tag == 'player:stop-moving' or game_tag == 'player:moving-banned') and (
-            player_id and player_id in GameInfo.PLAYER_ID))):
+    # if in_bomb or (
+    #         is_stopped and ((game_tag == 'player:stop-moving' or game_tag == 'player:moving-banned') and (
+    #         player_id and player_id in GameInfo.PLAYER_ID))):
+    if in_bomb:
         place_bombs, next_poses, _ = game_map.finding_safe_zones_v3(game_map.my_bot.pos)
         if len(place_bombs) > 0:
             normal_routes.put((-1, (-1, place_bombs, next_poses, -1)))
