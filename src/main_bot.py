@@ -1293,7 +1293,7 @@ class GameMap:
                         #         min_score += 1500000
                         if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
                             min_score += 2000000
-                    # min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
+                    min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
                     next_routes.append([next_pos, score + 1, score + min_score, route.value])
 
             next_routes.sort(key=lambda x: x[2])
@@ -1383,7 +1383,7 @@ class GameMap:
                         #         min_score += 1500000
                         if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
                             min_score += 2000000
-                    # min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
+                    min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
                     next_routes.append([next_pos, score + 1, score + min_score, route.value])
 
             next_routes.sort(key=lambda x: x[2])
@@ -1457,7 +1457,7 @@ class GameMap:
             elif bombs_power < -1000000:
                 cost += 1000000
         elif spoil_type == 26:
-            cost -= 12
+            cost -= 15
         elif spoil_type != -1:
             cost -= 8
         return cost
