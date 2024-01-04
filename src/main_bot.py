@@ -1614,9 +1614,9 @@ def attack_mode_v1(game_map):
     delta_dragon = 1000
     if game_map.opp_bot.dragon:
         delta_dragon = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.dragon['pos'])
-    timing = 7
+    timing = 5
     if 60 <= game_map.remain_time < 120:
-        timing = 5
+        timing = 7
     elif 45 <= game_map.remain_time < 60:
         timing = 13
     elif game_map.remain_time < 45:
