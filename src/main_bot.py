@@ -1176,11 +1176,11 @@ class GameMap:
                             min_score = est_score
                     saved.add(next_pos)
                     if 0 <= neighbor_pos[0] < self.max_row and 0 <= neighbor_pos[1] < self.max_col:
-                        if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
-                            if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
-                                min_score += 1000000
-                            elif tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
-                                min_score += 1500000
+                        # if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
+                        #     if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
+                        #         min_score += 1000000
+                        #     elif tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
+                        #         min_score += 1500000
                         if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
                             min_score += 2000000
                     # min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
@@ -1286,14 +1286,14 @@ class GameMap:
                             min_score = est_score
                     saved.add(next_pos)
                     if 0 <= neighbor_pos[0] < self.max_row and 0 <= neighbor_pos[1] < self.max_col:
-                        if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
-                            if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
-                                min_score += 1000000
-                            elif tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
-                                min_score += 1500000
+                        # if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
+                        #     if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
+                        #         min_score += 1000000
+                        #     elif tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
+                        #         min_score += 1500000
                         if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
                             min_score += 2000000
-                    min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
+                    # min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
                     next_routes.append([next_pos, score + 1, score + min_score, route.value])
 
             next_routes.sort(key=lambda x: x[2])
@@ -1376,11 +1376,11 @@ class GameMap:
                     min_score = 1000000
                     saved.add(next_pos)
                     if 0 <= neighbor_pos[0] < self.max_row and 0 <= neighbor_pos[1] < self.max_col:
-                        if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
-                            if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
-                                min_score += 1000000
-                            elif tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
-                                min_score += 1500000
+                        # if tmp_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
+                        #     if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
+                        #         min_score += 1000000
+                        #     elif tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
+                        #         min_score += 1500000
                         if tmp_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
                             min_score += 2000000
                     # min_score = min_score - 1000 * self.heuristic_func(next_pos, self.opp_bot.pos, -1)
@@ -1453,13 +1453,13 @@ class GameMap:
             if bombs_power >= 6:
                 cost -= 13
             elif bombs_power == 4:
-                cost -= 7
+                cost -= 10
             elif bombs_power < -1000000:
                 cost += 1000000
         elif spoil_type == 26:
             cost -= 12
         elif spoil_type != -1:
-            cost -= 10
+            cost -= 8
         return cost
 
     @staticmethod
@@ -1580,7 +1580,7 @@ def finding_path(game_map, move_temp=False):
 
         # Check whether the current position is the target or not.
         if pos in game_map.targets:
-            normal_routes.put((score - 17, (score, routes, poses, game_map.targets[pos])))
+            normal_routes.put((score - 3, (score, routes, poses, game_map.targets[pos])))
             break
         elif pos in game_map.bomb_targets:
             if not game_map.near_spoil(pos):
@@ -1589,7 +1589,7 @@ def finding_path(game_map, move_temp=False):
                     if len(routes) == 0:
                         routes.extend(place_bombs)
                         poses.extend(next_poses)
-                        normal_routes.put((score - game_map.bomb_targets[pos] - 7, (score, routes, poses, 13)))
+                        normal_routes.put((score - game_map.bomb_targets[pos] - 3, (score, routes, poses, 13)))
                     else:
                         normal_routes.put((score - game_map.bomb_targets[pos], (score, routes, poses, -1)))
                     break
@@ -1624,16 +1624,16 @@ def finding_path(game_map, move_temp=False):
                         min_score = est_score
                 saved.add(next_pos)
                 if 0 <= neighbor_pos[0] < game_map.max_row and 0 <= neighbor_pos[1] < game_map.max_col:
-                    if game_map.map_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
-                        if game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == ValidPos.BALK.value:
-                            min_score += 500000
-                        elif game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
-                            min_score += 1000000
-                        elif game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
-                            min_score += 1500000
+                    # if game_map.map_matrix[next_pos[0]][next_pos[1]] not in target_pos_set:
+                    #     if game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == ValidPos.BALK.value:
+                    #         min_score += 500000
+                    #     elif game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.TELE_GATE.value:
+                    #         min_score += 1000000
+                    #     elif game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.WALL.value:
+                    #         min_score += 1500000
                     if game_map.map_matrix[neighbor_pos[0]][neighbor_pos[1]] == InvalidPos.BOMB.value:
                         min_score += 2000000
-                min_score = min_score - 10000 * game_map.heuristic_func(next_pos, game_map.opp_bot.pos, -1)
+                # min_score = min_score - 10000 * game_map.heuristic_func(next_pos, game_map.opp_bot.pos, -1)
                 # At the current position (next_pos), add to the queue the direction of movement closest to the target.
                 next_routes.append([next_pos, score + 1, score + min_score, route.value])
 
