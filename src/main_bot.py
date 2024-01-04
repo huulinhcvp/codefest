@@ -1529,6 +1529,7 @@ def attack_mode_v1(game_map):
     delta_dragon = 1000
     if game_map.opp_bot.dragon:
         delta_dragon = game_map.heuristic_func(game_map.my_bot.pos, game_map.opp_bot.dragon['pos'])
+    timing = 15 - 2 * (game_map.remain_time // 60)
     if delta_opp <= 7:
         pos, routes, poses, score = game_map.is_connected_to_opp()
         if pos and len(poses) <= 3:
@@ -1540,7 +1541,7 @@ def attack_mode_v1(game_map):
                     normal_routes.put((score, (score, routes, poses, 13)))
                 else:
                     normal_routes.put((score, (score, routes, poses, -1)))
-    elif delta_dragon <= 7 or (len(game_map.bomb_targets) == 0 and len(game_map.targets) == 0 and delta_dragon != 1000):
+    elif delta_dragon <= timing or (len(game_map.bomb_targets) == 0 and len(game_map.targets) == 0 and delta_dragon != 1000):
         pos, routes, poses, score = game_map.is_connected_to_dragon()
         if pos and len(poses) <= 3:
             _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
