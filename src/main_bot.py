@@ -1005,50 +1005,6 @@ class GameMap:
                                 return True
         return False
 
-    def in_stopped_by_server(self):
-        for bomb_pos, bomb_info in self.bombs.items():
-            power = bomb_info.get('power', 4)
-            delta_row = self.my_bot.pos[0] - bomb_pos[0]
-            delta_col = self.my_bot.pos[1] - bomb_pos[1]
-
-            if delta_row == 0:
-                if abs(delta_col) <= power:
-                    if delta_col == 0:
-                        return True
-                    elif delta_col < 0:
-                        for i in range(1, abs(delta_col)):
-                            new_col = self.my_bot.pos[1] + i
-                            if self.map_matrix[self.my_bot.pos[0]][new_col] in {1, 2, 5}:
-                                break
-                            else:
-                                return True
-                    else:
-                        for i in range(1, delta_col):
-                            new_col = self.my_bot.pos[1] - i
-                            if self.map_matrix[self.my_bot.pos[0]][new_col] in {1, 2, 5}:
-                                break
-                            else:
-                                return True
-            elif delta_col == 0:
-                if abs(delta_row) <= power:
-                    if delta_row == 0:
-                        return True
-                    elif delta_row < 0:
-                        for i in range(1, abs(delta_row)):
-                            new_row = self.my_bot.pos[0] + i
-                            if self.map_matrix[new_row][self.my_bot.pos[1]] in {1, 2, 5}:
-                                break
-                            else:
-                                return True
-                    else:
-                        for i in range(1, delta_row):
-                            new_row = self.my_bot.pos[0] - i
-                            if self.map_matrix[new_row][self.my_bot.pos[1]] in {1, 2, 5}:
-                                break
-                            else:
-                                return True
-        return False
-
     def _retrieve_all_targets(self):
         roads = list(zip(*np.where(self.map_matrix == 0)))
         egg_mystic = list(zip(*np.where(self.map_matrix == 9)))
@@ -1496,7 +1452,7 @@ class GameMap:
 
         return [], [], 0
 
-    def greedy_place_bombs(self, cur_pos, bombs_power=0, attack=False, is_setup=False, is_egg=False):
+    def greedy_place_bombs(self, cur_pos, bombs_power=0, is_attack=False, is_setup=False, is_egg=False):
         """Return next_move is 'b' if my bot can place a bomb."""
         avail_moves = self.avail_moves(cur_pos)
         if len(avail_moves) == 0:
@@ -1505,7 +1461,7 @@ class GameMap:
         interval = self.timestamp - bomb_timestamp
         if interval > self.my_bot.delay:
             # before placing a bomb, please find a place to hide
-            if not attack:
+            if not is_attack:
                 moves, poses, _ = self.finding_safe_zones_v2(cur_pos)
             else:
                 if not is_egg:
@@ -1517,26 +1473,6 @@ class GameMap:
                     moves.appendleft('b')
                 return bombs_power, moves, poses
         return 0, [], []
-
-    def run_away(self):
-        delta_row = self.my_bot.pos[0] - self.opp_bot.pos[0]
-        delta_col = self.my_bot.pos[1] - self.opp_bot.pos[1]
-
-        if delta_row == 0:
-            if 3 < abs(delta_col) <= 7:
-                return True
-            else:
-                return False
-        elif delta_col == 0:
-            if 3 < abs(delta_row) <= 7:
-                return True
-            else:
-                return False
-        else:
-            delta = abs(delta_col) + abs(delta_row)
-            if 6 < delta <= 9:
-                return True
-        return False
 
     def heuristic_func(self, current_pos, target_pos, spoil_type=0):
         cost = abs(current_pos[0] - target_pos[0]) + abs(current_pos[1] - target_pos[1])
@@ -1566,7 +1502,6 @@ class GameMap:
 def free_bfs(game_map):
     tmp_valid_pos_set = copy.deepcopy(valid_pos_set)
     tmp_valid_pos_set.add(Spoil.EGG_MYSTIC.value)  # add egg mystic to valid pos
-    # tmp_valid_pos_set.add(InvalidPos.TEMP.value)
     free_route = tuple()
     saved = set()
     my_pos = game_map.my_bot.pos
@@ -1621,11 +1556,11 @@ def attack_mode_v1(game_map):
         timing = 13
     elif game_map.remain_time < 45:
         timing = 23
-    # timing = 15 - 2 * (game_map.remain_time // 60)
+
     if delta_opp <= 7:
         pos, routes, poses, score = game_map.is_connected_to_opp()
         if pos and len(poses) <= 3:
-            _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
+            _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, is_attack=True)
             if len(place_bombs) > 2 and len(next_poses) > 1:
                 if len(routes) == 0:
                     routes.extend(place_bombs)
@@ -1637,7 +1572,7 @@ def attack_mode_v1(game_map):
             len(game_map.bomb_targets) == 0 and len(game_map.targets) == 0 and delta_dragon != 1000):
         pos, routes, poses, score = game_map.is_connected_to_dragon()
         if pos and len(poses) <= 3:
-            _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, attack=True)
+            _, place_bombs, next_poses = game_map.greedy_place_bombs(pos, is_attack=True)
             if len(place_bombs) > 2 and len(next_poses) > 1:
                 if len(routes) == 0:
                     routes.extend(place_bombs)
@@ -1876,10 +1811,7 @@ def map_state(data):
 
     normal_routes = PriorityQueue()
     in_bomb = game_map.in_opp_bomb_zones()
-    is_stopped = game_map.in_stopped_by_server()
-    # if in_bomb or (
-    #         is_stopped and ((game_tag == 'player:stop-moving' or game_tag == 'player:moving-banned') and (
-    #         player_id and player_id in GameInfo.PLAYER_ID))):
+
     if in_bomb:
         place_bombs, next_poses, _ = game_map.finding_safe_zones_v3(game_map.my_bot.pos)
         if len(place_bombs) > 0:
@@ -1918,7 +1850,6 @@ def map_state(data):
                     opp_pos = game_map.opp_bot.pos
                     count_opp = 0
                     counter = 0
-                print(f'DEBUG - RUN RUN RUN AWAYYYY')
     else:
         move = can_move()
         if move:
