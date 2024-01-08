@@ -15,6 +15,7 @@ Python 3.9
 
 ## Run bots
 
-1. Change GAME_ID in src/game_info.py
-2. Run bot1: python sbot1.py
-3. Run bot2: python sbot2.py
+1. Change GAME_ID in src/game_info.py, src/sbot1/game_info.py, src/sbot2/game_info.py
+2. Run main bot: python src/main_bot.py
+3. Run bot1: python sbot1.py
+4. Run bot2: python sbot2.py
