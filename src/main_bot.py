@@ -280,9 +280,9 @@ class GameMap:
         tmp.add(InvalidPos.TELE_GATE.value)
         for direction in attack_directions:
             for i in range(1, power + 1):
-                attack = i * direction
-                row = pos[0] + attack[0]
-                col = pos[1] + attack[1]
+                attack_direction = i * direction
+                row = pos[0] + attack_direction[0]
+                col = pos[1] + attack_direction[1]
                 if row < 0 or row >= self.max_row or col < 0 or col >= self.max_col:
                     break
                 if self.map_matrix[row][col] in tmp:
